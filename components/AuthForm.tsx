@@ -19,6 +19,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { createAccount, signInUser } from "@/lib/actions/user.actions";
 import OTPModal from "./OTPModal";
+import { useToast } from "@/hooks/use-toast";
 
 type FormType = "sign-in" | "sign-up";
 
@@ -36,6 +37,7 @@ const AuthForm = ({ type }: { type: FormType }) => {
   const [isLoading, setisLoading] = useState(false);
   const [errorMessage, seterrorMessage] = useState("");
   const [accountId, setAccountId] = useState(null);
+  const { toast } = useToast();
 
   const formSchema = authFormSchema(type);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -59,10 +61,34 @@ const AuthForm = ({ type }: { type: FormType }) => {
             })
           : await signInUser({ email: values.email });
 
+      if (user.error) {
+        seterrorMessage(user.error);
+        if (user.error === "User not found") {
+          toast({
+            title: "Account not found",
+            description: (
+              <span>
+                No account exists for this email.{" "}
+                <Link href="/sign-up" className="font-semibold underline">
+                  Sign up instead
+                </Link>
+                .
+              </span>
+            ),
+            variant: "destructive",
+          });
+        }
+        return;
+      }
+
       setAccountId(user.accountId);
     } catch (error) {
       console.error(error);
-      seterrorMessage("Failed to create account. Please try again.");
+      seterrorMessage(
+        type === "sign-in"
+          ? "Failed to sign in. Please try again."
+          : "Failed to create account. Please try again."
+      );
     } finally {
       setisLoading(false);
     }

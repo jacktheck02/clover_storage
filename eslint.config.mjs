@@ -1,3 +1,15 @@
 import eslintConfigNext from "eslint-config-next";
 
-export default eslintConfigNext;
+const eslintConfig = [
+  {
+    ignores: [
+      ".next/**",
+      ".open-next/**",
+      ".wrangler/**",
+      "migration-output/**",
+    ],
+  },
+  ...eslintConfigNext,
+];
+
+export default eslintConfig;

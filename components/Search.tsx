@@ -6,21 +6,9 @@ import Image from "next/image";
 import { Input } from "@/components/ui/input";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { getFiles } from "@/lib/actions/file.actions";
-import { Models } from "node-appwrite";
 import Thumbnail from "@/components/Thumbnail";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { useDebounce } from "use-debounce";
-
-interface FileDocument extends Models.Document {
-  type: FileType;
-  extension: string;
-  url: string;
-  name: string;
-  size: number;
-  owner: {
-    fullName: string;
-  };
-}
 
 const Search = ({
   userId,

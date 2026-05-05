@@ -304,7 +304,7 @@
     @apply flex items-center rounded-[20px] bg-brand dark:bg-[#8b7355] p-2 text-white md:flex-col xl:flex-row !important;
   }
   .chart-container {
-    @apply mx-auto aspect-square w-[180px] text-white xl:w-[200px] !important;
+    @apply mx-auto aspect-square h-[180px] min-h-[180px] w-[180px] min-w-[180px] text-white xl:h-[200px] xl:min-h-[200px] xl:w-[200px] xl:min-w-[200px] !important;
   }
   .polar-grid {
     @apply first:fill-white/20 last:fill-brand dark:last:fill-[#8b7355] !important;

@@ -15,7 +15,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             alt="logo"
             width={350}
             height={150}
-            className="h-auto"
+            className="h-auto w-auto"
             priority
           />
 
@@ -47,6 +47,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
             width={350}
             height={150}
             className="h-auto w-[200px] lg:w-[250px]"
+            style={{ height: "auto" }}
             priority
           />
         </div>

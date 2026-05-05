@@ -1,6 +1,5 @@
 "use client";
 
-import { Models } from "node-appwrite";
 import { useState } from "react";
 import Thumbnail from "@/components/Thumbnail";
 import { convertFileSize, getFileType } from "@/lib/utils";
@@ -8,7 +7,7 @@ import FormattedDateTime from "@/components/FormattedDateTime";
 import ActionDropdown from "@/components/ActionDropdown";
 import FilePreview from "@/components/FilePreview";
 
-const Card = ({ file }: { file: Models.Document }) => {
+const Card = ({ file }: { file: FileDocument }) => {
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const fileType = getFileType(file.name);
   const { type, extension } = fileType;

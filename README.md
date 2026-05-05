@@ -1,6 +1,6 @@
 # Clover - Cloud File Storage & Management
 
-Clover is a cloud file storage and management web application. It is basically a lightweight clone of Google Drive. It is built using Next.js for the frontend and Appwrite for the backend and database. You can upload all kinds of files on the platform, preview them, and also share them with other users in your instance of the application. Hosted on Vercel.
+Clover is a cloud file storage and management web application. It is basically a lightweight clone of Google Drive. The site is hosted on Vercel with Next.js, while a separate Cloudflare Worker backend owns Cloudflare D1 auth/file metadata and Cloudflare R2 private file objects. You can upload files, preview them, and share them with other users in your instance of the application.
 
 Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mastery-Pro/storage-management).
 
@@ -19,11 +19,12 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 
 ### Backend & Services
 
-- **Appwrite** - Backend-as-a-Service for:
-  - User authentication
-  - Database management
-  - File storage
-  - Server-side operations
+- **Vercel** - Next.js site hosting
+- **Cloudflare Workers** - Backend API for D1/R2 operations
+- **Cloudflare D1** - Auth, file metadata, and sharing records
+- **Cloudflare R2** - Private object storage
+- **Resend** - Email OTP delivery
+- **Cloudflare Turnstile** - Optional bot protection for auth flows
 
 ### Form Handling & Validation
 
@@ -41,8 +42,9 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 
 ## Prerequisites
 
-- **Node.js** (current LTS) and npm/yarn/pnpm/bun
-- An **Appwrite** account (sign up at [appwrite.io](https://appwrite.io) or use self-hosted instance)
+- **Node.js** 20.19+ and npm/yarn/pnpm/bun
+- A Cloudflare account with Workers, D1, and R2 enabled
+- A Resend account and verified sender for production OTP email
 
 ## Getting Started
 
@@ -65,92 +67,60 @@ pnpm install
 bun install
 ```
 
-### 3. Set up Appwrite
+### 3. Set up Cloudflare
 
-#### Create an Appwrite Project
+Create the D1 database and R2 buckets:
 
-1. Go to your [Appwrite Console](https://cloud.appwrite.io) (or your self-hosted instance)
-2. Create a new project
-3. Note your **Project ID** and **API Endpoint**
+```bash
+npx wrangler d1 create clover-db
+npx wrangler r2 bucket create clover-files
+npx wrangler r2 bucket create clover-backups
+```
 
-#### Set up Authentication
+Update `wrangler.jsonc` with the generated D1 `database_id`, then apply migrations:
 
-1. In your Appwrite project, go to **Auth** → **Settings**
-2. Enable **Email/Password** authentication
-3. Configure email settings (SMTP) for OTP delivery
-
-#### Create Database and Collections
-
-1. Go to **Databases** → Create a new database
-2. Note your **Database ID**
-
-**Create Users Collection:**
-
-- Collection ID: `users` (or your preferred name)
-- Add the following attributes:
-  - `fullName` (String, required)
-  - `email` (String, required, unique)
-  - `avatar` (String, required)
-  - `accountId` (String, required)
-- Set permissions: Allow users to read/write their own documents
-
-**Create Files Collection:**
-
-- Collection ID: `files` (or your preferred name)
-- Add the following attributes:
-  - `type` (String, required) - Values: "document", "image", "video", "audio", "other"
-  - `name` (String, required)
-  - `url` (String, required)
-  - `extension` (String, required)
-  - `size` (Integer, required)
-  - `owner` (String, required) - User ID reference
-  - `accountId` (String, required)
-  - `users` (String[], required) - Array of email addresses for sharing
-  - `bucketFileId` (String, required)
-- Set permissions: Allow users to read/write their own documents and read shared files
-
-#### Create Storage Bucket
-
-1. Go to **Storage** → Create a new bucket
-2. Note your **Bucket ID**
-3. Set bucket permissions:
-   - **Create**: Authenticated users
-   - **Read**: Authenticated users
-   - **Update**: File owner
-   - **Delete**: File owner
-4. Configure file size limit (default: 50MB, can be adjusted in `constants/index.ts`)
-
-#### Get API Keys
-
-1. Go to **Settings** → **API Keys**
-2. Create a new API key with the following scopes:
-   - `databases.read`
-   - `databases.write`
-   - `storage.read`
-   - `storage.write`
-   - `users.read`
-3. Copy the **Secret Key** (you won't be able to see it again)
+```bash
+npm run db:migrations:apply
+npm run db:migrations:apply:remote
+```
 
 ### 4. Set up environment variables
 
-Create a `.env.local` file in the root directory:
+For local Vercel/Next development, create a `.env.local` file in the root directory:
 
 ```env
-# Appwrite Configuration
-NEXT_PUBLIC_APPWRITE_ENDPOINT=https://cloud.appwrite.io/v1
-# or for self-hosted: http://your-appwrite-instance/v1
-
-NEXT_PUBLIC_APPWRITE_PROJECT=your_project_id
-NEXT_PUBLIC_APPWRITE_DATABASE=your_database_id
-NEXT_PUBLIC_APPWRITE_USERS_COLLECTION=users
-NEXT_PUBLIC_APPWRITE_FILES_COLLECTION=files
-NEXT_PUBLIC_APPWRITE_BUCKET=your_bucket_id
-NEXT_APPWRITE_KEY=your_secret_api_key
+AUTH_COOKIE_NAME=clover-session
+CLOVER_BACKEND_URL=http://localhost:8787
+CLOVER_BACKEND_SECRET=replace_with_the_same_secret_used_by_the_worker
 ```
 
-**Important:** Replace all placeholder values with your actual Appwrite configuration IDs.
+Set the same `AUTH_COOKIE_NAME`, `CLOVER_BACKEND_URL`, and `CLOVER_BACKEND_SECRET` in Vercel project environment variables before pushing to a Vercel-deployed branch.
 
-### 5. Run the development server
+For the Cloudflare Worker backend, configure secrets with Wrangler:
+
+```bash
+npx wrangler secret put CLOVER_BACKEND_SECRET
+npx wrangler secret put AUTH_SECRET
+npx wrangler secret put RESEND_API_KEY
+npx wrangler secret put RESEND_FROM_EMAIL
+npx wrangler secret put R2_ACCOUNT_ID
+npx wrangler secret put R2_ACCESS_KEY_ID
+npx wrangler secret put R2_SECRET_ACCESS_KEY
+```
+
+`CLOUDFLARE_API_TOKEN` is only for Wrangler resource/deploy commands. Keep it in your local shell or CI secret store, not in Vercel runtime variables and never in source.
+
+For migration from the old Appwrite backend, also set `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_DATABASE_ID`, `APPWRITE_USERS_COLLECTION_ID`, `APPWRITE_FILES_COLLECTION_ID`, and `APPWRITE_BUCKET_ID`.
+
+### 5. Run development servers
+
+Run the Cloudflare backend Worker:
+
+```bash
+npm run backend:dev
+```
+
+In another terminal, run the Vercel/Next app:
 
 ```bash
 npm run dev
@@ -162,19 +132,51 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the application.
+Open [http://localhost:3000](http://localhost:3000) in your browser to see the application. The Next app calls the Worker URL from `CLOVER_BACKEND_URL`.
 
 ### 6. Build for production
 
 ```bash
 npm run build
-npm start
+npm run backend:deploy
 ```
+
+## Migration And Operations
+
+Generate an Appwrite export/import file without changing R2:
+
+```bash
+npm run migrate:appwrite -- --dry-run
+```
+
+Run the real migration after writes are frozen:
+
+```bash
+npm run migrate:appwrite
+npx wrangler d1 execute clover-db --remote --file migration-output/appwrite-import.sql
+```
+
+Create a remote D1 export and upload it to the backup R2 bucket:
+
+```bash
+BACKUPS_R2_BUCKET_NAME=clover-backups npm run backup:d1
+```
+
+Clean up stale pending upload rows and orphaned R2 objects:
+
+```bash
+npm run cleanup:uploads
+```
+
+See `docs/cloudflare-cutover.md` for the staging rehearsal, production cutover, monitoring, backup, and rollback checklist.
 
 ## Learn More
 
 - [Next.js Documentation](https://nextjs.org/docs)
-- [Appwrite Documentation](https://appwrite.io/docs)
+- [Vercel Next.js Documentation](https://vercel.com/docs/frameworks/nextjs)
+- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
+- [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1/)
+- [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
 - [Tailwind CSS Documentation](https://tailwindcss.com/docs)
 - [Radix UI Documentation](https://www.radix-ui.com/docs)
 
@@ -186,10 +188,10 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 1. Push your code to GitHub/GitLab/Bitbucket
 2. Import your repository to Vercel
-3. Add all environment variables in **Settings** → **Environment Variables**
+3. Add Vercel frontend environment variables in **Settings** → **Environment Variables**
 4. Deploy!
 
-**Important:** Make sure to add all environment variables from your `.env.local` file to your Vercel project settings.
+**Important:** Vercel hosts the frontend only. Deploy the backend separately with `npm run backend:deploy`, then point `CLOVER_BACKEND_URL` at that Worker URL.
 
 ### Other Deployment Options
 

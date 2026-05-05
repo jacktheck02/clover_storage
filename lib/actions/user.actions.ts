@@ -1,37 +1,38 @@
 "use server";
 
-import { createAdminClient, createSessionClient } from "@/lib/appwrite";
-import { appwriteConfig } from "@/lib/appwrite/config";
-import { Query, ID } from "node-appwrite";
 import { parseStringify } from "@/lib/utils";
 import { cookies } from "next/headers";
-import { avatarPlaceholderUrl } from "@/constants";
 import { redirect } from "next/navigation";
+import { backendJson, getAuthCookieName } from "@/lib/backend/client";
 
-const getUserByEmail = async (email: string) => {
-  const { databases } = await createAdminClient();
+const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 
-  const result = await databases.listDocuments(
-    appwriteConfig.databaseId,
-    appwriteConfig.usersCollectionId,
-    [Query.equal("email", [email])],
-  );
-
-  return result.total > 0 ? result.documents[0] : null;
-};
+const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const handleError = (error: unknown, message: string) => {
   console.log(error, message);
   throw error;
 };
 
-export const sendEmailOTP = async ({ email }: { email: string }) => {
-  const { account } = await createAdminClient();
-
+export const sendEmailOTP = async ({
+  email,
+  turnstileToken,
+}: {
+  email: string;
+  turnstileToken?: string;
+}) => {
   try {
-    const session = await account.createEmailToken(ID.unique(), email);
-
-    return session.userId;
+    const result = await backendJson<{ accountId: string | null }>(
+      "/auth/send-otp",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          email: normalizeEmail(email),
+          turnstileToken,
+        }),
+      }
+    );
+    return result.accountId;
   } catch (error) {
     handleError(error, "Failed to send email OTP");
   }
@@ -44,28 +45,14 @@ export const createAccount = async ({
   fullName: string;
   email: string;
 }) => {
-  const existingUser = await getUserByEmail(email);
-
-  const accountId = await sendEmailOTP({ email });
-  if (!accountId) throw new Error("Failed to send an OTP");
-
-  if (!existingUser) {
-    const { databases } = await createAdminClient();
-
-    await databases.createDocument(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersCollectionId,
-      ID.unique(),
-      {
-        fullName,
-        email,
-        avatar: avatarPlaceholderUrl,
-        accountId,
-      },
-    );
-  }
-
-  return parseStringify({ accountId });
+  const result = await backendJson<{ accountId: string }>("/auth/create", {
+    method: "POST",
+    body: JSON.stringify({
+      fullName,
+      email: normalizeEmail(email),
+    }),
+  });
+  return parseStringify(result);
 };
 
 export const verifySecret = async ({
@@ -76,18 +63,24 @@ export const verifySecret = async ({
   password: string;
 }) => {
   try {
-    const { account } = await createAdminClient();
+    const result = await backendJson<{
+      sessionId: string;
+      token: string;
+      maxAge?: number;
+    }>("/auth/verify", {
+      method: "POST",
+      body: JSON.stringify({ accountId, password }),
+    });
 
-    const session = await account.createSession(accountId, password);
-
-    (await cookies()).set("appwrite-session", session.secret, {
+    (await cookies()).set(getAuthCookieName(), `${accountId}.${result.token}`, {
       path: "/",
       httpOnly: true,
       sameSite: "strict",
       secure: true,
+      maxAge: result.maxAge || SESSION_MAX_AGE_SECONDS,
     });
 
-    return parseStringify({ sessionId: session.$id });
+    return parseStringify({ sessionId: result.sessionId });
   } catch (error) {
     handleError(error, "Failed to verify OTP");
   }
@@ -95,30 +88,35 @@ export const verifySecret = async ({
 
 export const getCurrentUser = async () => {
   try {
-    const { databases, account } = await createSessionClient();
+    const sessionCookie = (await cookies()).get(getAuthCookieName());
+    if (!sessionCookie?.value) return null;
 
-    const result = await account.get();
-
-    const user = await databases.listDocuments(
-      appwriteConfig.databaseId,
-      appwriteConfig.usersCollectionId,
-      [Query.equal("accountId", result.$id)],
+    const result = await backendJson<{ user: UserDocument | null }>(
+      "/auth/current",
+      {
+        method: "POST",
+        body: JSON.stringify({ session: sessionCookie.value }),
+      }
     );
 
-    if (user.total <= 0) return null;
-
-    return parseStringify(user.documents[0]);
+    return result.user ? parseStringify(result.user) : null;
   } catch (error) {
     console.log(error);
+    return null;
   }
 };
 
 export const signOutUser = async () => {
-  const { account } = await createSessionClient();
-
   try {
-    await account.deleteSession("current");
-    (await cookies()).delete("appwrite-session");
+    const cookieStore = await cookies();
+    const sessionCookie = cookieStore.get(getAuthCookieName());
+    if (sessionCookie?.value) {
+      await backendJson("/auth/sign-out", {
+        method: "POST",
+        body: JSON.stringify({ session: sessionCookie.value }),
+      });
+    }
+    cookieStore.delete(getAuthCookieName());
   } catch (error) {
     handleError(error, "Failed to sign out user");
   } finally {
@@ -128,15 +126,14 @@ export const signOutUser = async () => {
 
 export const signInUser = async ({ email }: { email: string }) => {
   try {
-    const existingUser = await getUserByEmail(email);
-
-    // User exists, send OTP
-    if (existingUser) {
-      await sendEmailOTP({ email });
-      return parseStringify({ accountId: existingUser.accountId });
-    }
-
-    return parseStringify({ accountId: null, error: "User not found" });
+    const result = await backendJson<{
+      accountId: string | null;
+      error?: string;
+    }>("/auth/sign-in", {
+      method: "POST",
+      body: JSON.stringify({ email: normalizeEmail(email) }),
+    });
+    return parseStringify(result);
   } catch (error) {
     handleError(error, "Failed to sign in user");
   }

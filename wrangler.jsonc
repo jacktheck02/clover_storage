@@ -1,0 +1,36 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "clover-backend",
+	"main": "cloudflare-api/src/index.ts",
+	"compatibility_date": "2026-04-30",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "clover-db",
+			"database_id": "3f1f9877-b62e-49ac-bf5b-9f31c5e0aab5",
+			"migrations_dir": "drizzle"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "FILES_BUCKET",
+			"bucket_name": "clover-files",
+			"preview_bucket_name": "clover-files-dev"
+		},
+		{
+			"binding": "BACKUPS_BUCKET",
+			"bucket_name": "clover-backups",
+			"preview_bucket_name": "clover-backups-dev"
+		}
+	],
+	"vars": {
+		"R2_BUCKET_NAME": "clover-files",
+		"TURNSTILE_ENABLED": "false"
+	},
+	"observability": {
+		"enabled": true
+	}
+}

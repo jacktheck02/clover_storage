@@ -1,5 +1,41 @@
 declare type FileType = "document" | "image" | "video" | "audio" | "other";
 
+declare interface UserDocument {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  accountId: string;
+  fullName: string;
+  email: string;
+  avatar: string;
+}
+
+declare interface FileDocument {
+  $id: string;
+  $createdAt: string;
+  $updatedAt: string;
+  type: FileType;
+  name: string;
+  url: string;
+  extension: string;
+  size: number;
+  owner: {
+    $id: string;
+    fullName: string;
+    email: string;
+  };
+  accountId: string;
+  users: string[];
+  bucketFileId: string;
+  r2Key?: string;
+  mimeType?: string;
+}
+
+declare interface FilesResponse {
+  total: number;
+  documents: FileDocument[];
+}
+
 declare interface ActionType {
   label: string;
   icon: string;
@@ -70,7 +106,7 @@ declare interface ThumbnailProps {
 }
 
 declare interface ShareInputProps {
-  file: Models.Document;
+  file: FileDocument;
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: (email: string) => void;
 }

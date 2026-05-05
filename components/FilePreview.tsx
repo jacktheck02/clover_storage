@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useState, useEffect, useCallback } from "react";
-import { Models } from "node-appwrite";
 import {
   Dialog,
   DialogContent,
@@ -12,7 +11,7 @@ import { getFileType } from "@/lib/utils";
 import Image from "next/image";
 
 interface FilePreviewProps {
-  file: Models.Document | null;
+  file: FileDocument | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -48,9 +47,12 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
       const entries: ZipEntry[] = [];
 
       zip.forEach((relativePath, file) => {
+        const zipFile = file as typeof file & {
+          _data?: { uncompressedSize?: number };
+        };
         entries.push({
           name: relativePath,
-          size: file._data?.uncompressedSize || 0,
+          size: zipFile._data?.uncompressedSize || 0,
           isDirectory: file.dir || false,
         });
       });

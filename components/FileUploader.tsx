@@ -8,9 +8,8 @@ import { cn, convertFileToUrl, getFileType } from "@/lib/utils";
 import Image from "next/image";
 import Thumbnail from "@/components/Thumbnail";
 import { MAX_FILE_SIZE } from "@/constants";
+import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
-import { uploadFile } from "@/lib/actions/file.actions";
-import { usePathname } from "next/navigation";
 
 interface Props {
   ownerId: string;
@@ -20,6 +19,7 @@ interface Props {
 
 const FileUploader = ({ ownerId, accountId, className }: Props) => {
   const path = usePathname();
+  const router = useRouter();
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
 
@@ -33,7 +33,7 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
             prevFiles.filter((f) => f.name !== file.name),
           );
 
-          return toast({
+          toast({
             description: (
               <p className="body-2 text-white">
                 <span className="font-semibold">{file.name}</span> is too large.
@@ -42,22 +42,82 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
             ),
             className: "error-toast",
           });
+          return false;
         }
 
-        return uploadFile({ file, ownerId, accountId, path }).then(
-          (uploadedFile) => {
-            if (uploadedFile) {
-              setFiles((prevFiles) =>
-                prevFiles.filter((f) => f.name !== file.name),
-              );
-            }
-          },
-        );
+        const intentResponse = await fetch("/api/uploads/intent", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            name: file.name,
+            size: file.size,
+            type: file.type || "application/octet-stream",
+            ownerId,
+            accountId,
+            path,
+          }),
+        });
+
+        if (!intentResponse.ok) {
+          throw new Error("Failed to create upload intent");
+        }
+
+        const intent = (await intentResponse.json()) as {
+          fileId: string;
+          uploadUrl: string;
+          method: "PUT";
+        };
+
+        const uploadResponse = await fetch(intent.uploadUrl, {
+          method: intent.method,
+          body: file,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error("Failed to upload file");
+        }
+
+        const completeResponse = await fetch("/api/uploads/complete", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ fileId: intent.fileId, path }),
+        });
+
+        if (!completeResponse.ok) {
+          throw new Error("Failed to complete upload");
+        }
+
+        setFiles((prevFiles) => prevFiles.filter((f) => f.name !== file.name));
+        return true;
       });
 
-      await Promise.all(uploadPromises);
+      const results = await Promise.allSettled(uploadPromises);
+      const hasUploadFailures = results.some(
+        (result) => result.status === "rejected"
+      );
+      const hasCompletedUploads = results.some(
+        (result) => result.status === "fulfilled" && result.value
+      );
+
+      if (hasUploadFailures) {
+        results.forEach((result) => {
+          if (result.status === "rejected") console.error(result.reason);
+        });
+        toast({
+          description: (
+            <p className="body-2 text-white">
+              Upload failed. Please try again.
+            </p>
+          ),
+          className: "error-toast",
+        });
+      }
+
+      if (hasCompletedUploads) {
+        router.refresh();
+      }
     },
-    [accountId, ownerId, path, toast],
+    [accountId, ownerId, path, router, toast],
   );
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });

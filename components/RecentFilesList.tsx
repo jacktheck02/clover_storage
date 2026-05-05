@@ -1,9 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { Models } from "node-appwrite";
-import Link from "next/link";
-import Image from "next/image";
 import { Thumbnail } from "@/components/Thumbnail";
 import { FormattedDateTime } from "@/components/FormattedDateTime";
 import ActionDropdown from "@/components/ActionDropdown";
@@ -11,14 +8,14 @@ import FilePreview from "@/components/FilePreview";
 import { getFileType } from "@/lib/utils";
 
 interface RecentFilesListProps {
-  files: Models.Document[];
+  files: FileDocument[];
 }
 
 const RecentFilesList: React.FC<RecentFilesListProps> = ({ files }) => {
-  const [previewFile, setPreviewFile] = useState<Models.Document | null>(null);
+  const [previewFile, setPreviewFile] = useState<FileDocument | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
-  const handleFileClick = (e: React.MouseEvent, file: Models.Document) => {
+  const handleFileClick = (e: React.MouseEvent, file: FileDocument) => {
     // Don't open preview if clicking on the action dropdown or any Radix dropdown menu
     const target = e.target as HTMLElement;
 
@@ -64,7 +61,7 @@ const RecentFilesList: React.FC<RecentFilesListProps> = ({ files }) => {
   return (
     <>
       <ul className="mt-5 flex flex-col gap-5">
-        {files.map((file: Models.Document) => {
+        {files.map((file: FileDocument) => {
           const fileType = getFileType(file.name);
           const { type, extension } = fileType;
           const canPreview =
