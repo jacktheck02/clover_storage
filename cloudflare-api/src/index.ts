@@ -673,17 +673,33 @@ async function handleFileObject(request: Request, env: Env, path: string) {
     .bind(fileId, userId, normalizeEmail(email))
     .first<{ r2_key: string; name: string; mime_type: string }>();
   if (!file) return new Response("Not found", { status: 404 });
-  const object = await env.FILES_BUCKET.get(file.r2_key);
+  const rangeHeader = request.headers.get("range");
+  const object = await env.FILES_BUCKET.get(
+    file.r2_key,
+    rangeHeader ? { range: request.headers } : undefined
+  );
   if (!object) return new Response("Not found", { status: 404 });
   const headers = new Headers();
   object.writeHttpMetadata(headers);
   headers.set("content-type", file.mime_type || "application/octet-stream");
+  headers.set("accept-ranges", "bytes");
+
+  let status = 200;
+  const partialRange = (object as R2ObjectBody & { range?: { offset?: number; length?: number } }).range;
+  if (partialRange?.offset !== undefined && partialRange?.length !== undefined) {
+    const start = partialRange.offset;
+    const end = start + partialRange.length - 1;
+    headers.set("content-range", `bytes ${start}-${end}/${object.size}`);
+    headers.set("content-length", String(partialRange.length));
+    status = 206;
+  }
+
   if (mode === "download") {
     headers.set("content-disposition", `attachment; filename="${file.name.replaceAll('"', '\\"')}"`);
   } else {
     headers.set("cache-control", "private, max-age=60");
   }
-  return new Response(object.body, { headers });
+  return new Response(object.body, { headers, status });
 }
 
 const worker = {

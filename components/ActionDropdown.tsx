@@ -3,6 +3,7 @@
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -91,6 +92,9 @@ const ActionDropdown = ({ file }: { file: FileDocument }) => {
           <DialogTitle className="text-center text-light-100 dark:text-white">
             {label}
           </DialogTitle>
+          <DialogDescription className="sr-only">
+            {label} action for {file.name}
+          </DialogDescription>
           {value === "rename" && (
             <Input
               type="text"

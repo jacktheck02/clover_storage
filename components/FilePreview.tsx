@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
@@ -27,6 +28,17 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [textContent, setTextContent] = useState<string>("");
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [duration, setDuration] = useState(0);
+  const [currentTime, setCurrentTime] = useState(0);
+  const audioRef = React.useRef<HTMLAudioElement | null>(null);
+
+  const formatTime = (seconds: number) => {
+    if (!Number.isFinite(seconds)) return "0:00";
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, "0")}`;
+  };
 
   const loadZipContents = useCallback(async () => {
     if (!file) return;
@@ -98,6 +110,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
       setZipContents([]);
       setTextContent("");
       setError(null);
+      setIsPlaying(false);
+      setDuration(0);
+      setCurrentTime(0);
       return;
     }
 
@@ -118,6 +133,37 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
 
   const fileType = getFileType(file.name);
   const { type, extension } = fileType;
+
+  const toggleAudioPlayback = async () => {
+    if (!audioRef.current) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+      setIsPlaying(false);
+      return;
+    }
+
+    try {
+      await audioRef.current.play();
+      setIsPlaying(true);
+    } catch (playError) {
+      console.error("Failed to play audio:", playError);
+    }
+  };
+
+  const handleSeek = (nextTime: number) => {
+    if (!audioRef.current) return;
+    audioRef.current.currentTime = nextTime;
+    setCurrentTime(nextTime);
+  };
+
+  const seekBy = (delta: number) => {
+    if (!audioRef.current) return;
+    const nextTime = Math.min(
+      Math.max(audioRef.current.currentTime + delta, 0),
+      duration || 0
+    );
+    handleSeek(nextTime);
+  };
 
   const renderPreview = () => {
     // Image preview (including SVG)
@@ -158,6 +204,75 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
           >
             Your browser does not support the video tag.
           </video>
+        </div>
+      );
+    }
+
+    // Audio preview
+    if (type === "audio") {
+      return (
+        <div className="flex items-center justify-center w-full h-full min-h-[260px] bg-neutral-50 dark:bg-neutral-900 p-6">
+          <div className="w-full max-w-2xl rounded-2xl border border-light-200/50 dark:border-light-200/10 bg-white dark:bg-dark-100 p-5 shadow-sm">
+            <audio
+              ref={audioRef}
+              src={file.url}
+              preload="metadata"
+              onLoadedMetadata={(e) => setDuration(e.currentTarget.duration || 0)}
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => setIsPlaying(false)}
+              onEnded={() => {
+                setIsPlaying(false);
+                setCurrentTime(0);
+              }}
+            >
+              Your browser does not support the audio element.
+            </audio>
+
+            <div className="mb-4 flex items-center justify-between">
+              <p className="subtitle-2 line-clamp-1 text-light-100 dark:text-light-200">
+                {file.name}
+              </p>
+              <p className="caption text-light-200 dark:text-light-200">
+                {formatTime(currentTime)} / {formatTime(duration)}
+              </p>
+            </div>
+
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              step={0.1}
+              value={Math.min(currentTime, duration || 0)}
+              onChange={(e) => handleSeek(Number(e.target.value))}
+              className="w-full accent-brand dark:accent-[#8b7355]"
+              aria-label="Audio progress"
+            />
+
+            <div className="mt-4 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => seekBy(-10)}
+                className="rounded-full border border-light-200/70 dark:border-light-200/20 px-3 py-1 text-sm text-light-100 dark:text-light-300 hover:bg-light-100/30 dark:hover:bg-light-200/10 transition-colors"
+              >
+                -10s
+              </button>
+              <button
+                type="button"
+                onClick={toggleAudioPlayback}
+                className="rounded-full bg-brand dark:bg-[#8b7355] px-5 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+              >
+                {isPlaying ? "Pause" : "Play"}
+              </button>
+              <button
+                type="button"
+                onClick={() => seekBy(10)}
+                className="rounded-full border border-light-200/70 dark:border-light-200/20 px-3 py-1 text-sm text-light-100 dark:text-light-300 hover:bg-light-100/30 dark:hover:bg-light-200/10 transition-colors"
+              >
+                +10s
+              </button>
+            </div>
+          </div>
         </div>
       );
     }
@@ -278,6 +393,9 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
       <DialogContent className="max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="truncate pr-8">{file.name}</DialogTitle>
+          <DialogDescription className="sr-only">
+            Previewing {file.name}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-auto">{renderPreview()}</div>
       </DialogContent>

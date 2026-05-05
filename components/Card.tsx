@@ -16,6 +16,7 @@ const Card = ({ file }: { file: FileDocument }) => {
   const canPreview =
     type === "image" ||
     type === "video" ||
+    type === "audio" ||
     extension === "pdf" ||
     ["txt", "md", "csv", "zip"].includes(extension);
 

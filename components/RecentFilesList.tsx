@@ -44,6 +44,7 @@ const RecentFilesList: React.FC<RecentFilesListProps> = ({ files }) => {
     const canPreview =
       type === "image" ||
       type === "video" ||
+      type === "audio" ||
       extension === "pdf" ||
       ["txt", "md", "csv", "zip"].includes(extension);
 
@@ -67,6 +68,7 @@ const RecentFilesList: React.FC<RecentFilesListProps> = ({ files }) => {
           const canPreview =
             type === "image" ||
             type === "video" ||
+            type === "audio" ||
             extension === "pdf" ||
             ["txt", "md", "csv", "zip"].includes(extension);
 
