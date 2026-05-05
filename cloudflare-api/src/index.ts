@@ -183,7 +183,6 @@ function mapFile(file: FileRow) {
     },
     accountId: file.owner_id,
     users: file.shared_users ? file.shared_users.split(",").filter(Boolean) : [],
-    bucketFileId: file.id,
     r2Key: file.r2_key,
     mimeType: file.mime_type,
   };
@@ -547,13 +546,13 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/delete") {
-    const body = await bodyJson<{ userId: string; fileId: string; bucketFileId?: string }>(request);
+    const body = await bodyJson<{ userId: string; fileId: string }>(request);
     const file = await env.DB.prepare("SELECT r2_key FROM files WHERE id = ? AND owner_id = ?")
       .bind(body.fileId, body.userId)
       .first<{ r2_key: string }>();
     if (!file) throw new Response("File not found", { status: 404 });
     await env.DB.prepare("DELETE FROM files WHERE id = ?").bind(body.fileId).run();
-    await env.FILES_BUCKET.delete(file.r2_key || body.bucketFileId || body.fileId);
+    await env.FILES_BUCKET.delete(file.r2_key);
     return json({ status: "success" });
   }
 

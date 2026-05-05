@@ -105,7 +105,6 @@ export const updateFileUsers = async ({
 
 export const deleteFile = async ({
   fileId,
-  bucketFileId,
   path,
 }: DeleteFileProps) => {
   try {
@@ -117,7 +116,6 @@ export const deleteFile = async ({
       body: JSON.stringify({
         userId: currentUser.$id,
         fileId,
-        bucketFileId,
       }),
     });
 

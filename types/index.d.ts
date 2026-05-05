@@ -26,7 +26,6 @@ declare interface FileDocument {
   };
   accountId: string;
   users: string[];
-  bucketFileId: string;
   r2Key?: string;
   mimeType?: string;
 }
@@ -74,7 +73,6 @@ declare interface UpdateFileUsersProps {
 }
 declare interface DeleteFileProps {
   fileId: string;
-  bucketFileId: string;
   path: string;
 }
 

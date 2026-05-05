@@ -110,8 +110,6 @@ npx wrangler secret put R2_SECRET_ACCESS_KEY
 
 `CLOUDFLARE_API_TOKEN` is only for Wrangler resource/deploy commands. Keep it in your local shell or CI secret store, not in Vercel runtime variables and never in source.
 
-For migration from the old Appwrite backend, also set `APPWRITE_ENDPOINT`, `APPWRITE_PROJECT_ID`, `APPWRITE_API_KEY`, `APPWRITE_DATABASE_ID`, `APPWRITE_USERS_COLLECTION_ID`, `APPWRITE_FILES_COLLECTION_ID`, and `APPWRITE_BUCKET_ID`.
-
 ### 5. Run development servers
 
 Run the Cloudflare backend Worker:
@@ -141,20 +139,7 @@ npm run build
 npm run backend:deploy
 ```
 
-## Migration And Operations
-
-Generate an Appwrite export/import file without changing R2:
-
-```bash
-npm run migrate:appwrite -- --dry-run
-```
-
-Run the real migration after writes are frozen:
-
-```bash
-npm run migrate:appwrite
-npx wrangler d1 execute clover-db --remote --file migration-output/appwrite-import.sql
-```
+## Operations
 
 Create a remote D1 export and upload it to the backup R2 bucket:
 
@@ -167,8 +152,6 @@ Clean up stale pending upload rows and orphaned R2 objects:
 ```bash
 npm run cleanup:uploads
 ```
-
-See `docs/cloudflare-cutover.md` for the staging rehearsal, production cutover, monitoring, backup, and rollback checklist.
 
 ## Learn More
 

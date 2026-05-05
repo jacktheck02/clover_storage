@@ -16,14 +16,9 @@ export const userProfiles = sqliteTable(
     avatarUrl: text("avatar_url").notNull(),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
-    legacyAppwriteUserDocId: text("legacy_appwrite_user_doc_id"),
-    legacyAppwriteAccountId: text("legacy_appwrite_account_id"),
   },
   (table) => ({
     emailIdx: uniqueIndex("user_profiles_email_idx").on(table.email),
-    legacyAccountIdx: index("user_profiles_legacy_account_idx").on(
-      table.legacyAppwriteAccountId
-    ),
   })
 );
 
@@ -174,9 +169,6 @@ export const files = sqliteTable(
     status: text("status").notNull().default("pending"),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
-    legacyAppwriteFileDocId: text("legacy_appwrite_file_doc_id"),
-    legacyAppwriteBucketFileId: text("legacy_appwrite_bucket_file_id"),
-    legacyAppwriteUrl: text("legacy_appwrite_url"),
   },
   (table) => ({
     ownerIdx: index("files_owner_idx").on(table.ownerId),
@@ -185,7 +177,6 @@ export const files = sqliteTable(
     nameIdx: index("files_name_idx").on(table.name),
     createdAtIdx: index("files_created_at_idx").on(table.createdAt),
     sizeIdx: index("files_size_idx").on(table.size),
-    legacyDocIdx: index("files_legacy_doc_idx").on(table.legacyAppwriteFileDocId),
     r2KeyIdx: uniqueIndex("files_r2_key_idx").on(table.r2Key),
   })
 );

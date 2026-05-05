@@ -4,13 +4,10 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   full_name TEXT NOT NULL,
   avatar_url TEXT NOT NULL,
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  legacy_appwrite_user_doc_id TEXT,
-  legacy_appwrite_account_id TEXT
+  updated_at TEXT NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS user_profiles_email_idx ON user_profiles (email);
-CREATE INDEX IF NOT EXISTS user_profiles_legacy_account_idx ON user_profiles (legacy_appwrite_account_id);
 
 CREATE TABLE IF NOT EXISTS user (
   id TEXT PRIMARY KEY NOT NULL,
@@ -113,10 +110,7 @@ CREATE TABLE IF NOT EXISTS files (
   mime_type TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'active')),
   created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL,
-  legacy_appwrite_file_doc_id TEXT,
-  legacy_appwrite_bucket_file_id TEXT,
-  legacy_appwrite_url TEXT
+  updated_at TEXT NOT NULL
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS files_r2_key_idx ON files (r2_key);
@@ -126,7 +120,6 @@ CREATE INDEX IF NOT EXISTS files_type_idx ON files (type);
 CREATE INDEX IF NOT EXISTS files_name_idx ON files (name);
 CREATE INDEX IF NOT EXISTS files_created_at_idx ON files (created_at);
 CREATE INDEX IF NOT EXISTS files_size_idx ON files (size);
-CREATE INDEX IF NOT EXISTS files_legacy_doc_idx ON files (legacy_appwrite_file_doc_id);
 
 CREATE TABLE IF NOT EXISTS file_shares (
   file_id TEXT NOT NULL REFERENCES files(id) ON DELETE CASCADE,
