@@ -10,6 +10,8 @@ import {
 } from "@/components/ui/dialog";
 import { getFileType } from "@/lib/utils";
 import Image from "next/image";
+import { Pause, Play } from "lucide-react";
+import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 
 interface FilePreviewProps {
   file: FileDocument | null;
@@ -129,10 +131,12 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
     }
   }, [file, isOpen, loadZipContents, loadTextContent]);
 
-  if (!file) return null;
-
-  const fileType = getFileType(file.name);
+  const safeFileName = file?.name || "";
+  const fileType = getFileType(safeFileName);
   const { type, extension } = fileType;
+  const { artworkUrl } = useAudioArtwork(file?.url || "", Boolean(file) && type === "audio");
+
+  if (!file) return null;
 
   const toggleAudioPlayback = async () => {
     if (!audioRef.current) return;
@@ -230,10 +234,31 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
             </audio>
 
             <div className="mb-4 flex items-center justify-between">
-              <p className="subtitle-2 line-clamp-1 text-light-100 dark:text-light-200">
-                {file.name}
-              </p>
-              <p className="caption text-light-200 dark:text-light-200">
+              <div className="flex min-w-0 items-center gap-3">
+                {artworkUrl ? (
+                  <Image
+                    src={artworkUrl}
+                    alt={`${file.name} cover art`}
+                    width={44}
+                    height={44}
+                    unoptimized
+                    className="size-11 rounded-md object-cover"
+                  />
+                ) : (
+                  <div className="flex size-11 items-center justify-center rounded-md bg-brand/10 dark:bg-[#8b7355]/20">
+                    <Image
+                      src="/assets/icons/file-audio.svg"
+                      alt="audio"
+                      width={20}
+                      height={20}
+                    />
+                  </div>
+                )}
+                <p className="subtitle-2 line-clamp-1 text-light-100 dark:text-light-200">
+                  {file.name}
+                </p>
+              </div>
+              <p className="caption shrink-0 text-light-200 dark:text-light-200">
                 {formatTime(currentTime)} / {formatTime(duration)}
               </p>
             </div>
@@ -260,9 +285,10 @@ const FilePreview: React.FC<FilePreviewProps> = ({ file, isOpen, onClose }) => {
               <button
                 type="button"
                 onClick={toggleAudioPlayback}
-                className="rounded-full bg-brand dark:bg-[#8b7355] px-5 py-2 text-sm font-medium text-white transition-colors hover:opacity-90"
+                className="flex items-center justify-center rounded-full bg-brand dark:bg-[#8b7355] p-2 text-white transition-colors hover:opacity-90"
+                aria-label={isPlaying ? "Pause audio" : "Play audio"}
               >
-                {isPlaying ? "Pause" : "Play"}
+                {isPlaying ? <Pause size={18} /> : <Play size={18} />}
               </button>
               <button
                 type="button"
