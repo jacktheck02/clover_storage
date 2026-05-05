@@ -27,9 +27,18 @@ const OTPModal = ({ accountId, email}: { accountId: string; email: string }) => 
     const [isOpen, setIsOpen] = useState(true);
     const [password, setPassword] = useState("");
     const [isLoading, setIsLoading] = useState(false);
+    const [otpError, setOtpError] = useState("");
 
-    const handleSubmit = async (e: React.MouseEvent<HTMLButtonElement>) => {
+    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
+        if (isLoading) return;
+
+        if (password.length !== 6) {
+            setOtpError("Please enter the full 6-digit OTP.");
+            return;
+        }
+
+        setOtpError("");
         setIsLoading(true);
 
         try {
@@ -70,49 +79,53 @@ const OTPModal = ({ accountId, email}: { accountId: string; email: string }) => 
                 </AlertDialogDescription>
             </AlertDialogHeader>
 
-            <InputOTP maxLength={6} value={password} onChange={setPassword}>
-                <InputOTPGroup className="shad-otp">
-                    <InputOTPSlot index={0} className="shad-otp-slot" />
-                    <InputOTPSlot index={1} className="shad-otp-slot" />
-                    <InputOTPSlot index={2} className="shad-otp-slot" />
-                    <InputOTPSlot index={3} className="shad-otp-slot" />
-                    <InputOTPSlot index={4} className="shad-otp-slot" />
-                    <InputOTPSlot index={5} className="shad-otp-slot" />
-                </InputOTPGroup>
-            </InputOTP>
-
-            <AlertDialogFooter>
+            <form onSubmit={handleSubmit}>
                 <div className="flex w-full flex-col gap-4">
-                <AlertDialogAction
-                    onClick={handleSubmit}
-                    className="shad-submit-btn h-12"
-                    type="button"
-                >
-                    Submit
-                    {isLoading && (
-                        <Image
-                            src="/assets/icons/loader.svg"
-                            alt="loader"
-                            width={24}
-                            height={24}
-                            className="ml-2 animate-spin"
-                        />
-                    )}
-                </AlertDialogAction>
+                    <InputOTP maxLength={6} value={password} onChange={(value) => {
+                        setPassword(value);
+                        if (otpError && value.length <= 6) setOtpError("");
+                    }}>
+                        <InputOTPGroup className="shad-otp">
+                            <InputOTPSlot index={0} className="shad-otp-slot" />
+                            <InputOTPSlot index={1} className="shad-otp-slot" />
+                            <InputOTPSlot index={2} className="shad-otp-slot" />
+                            <InputOTPSlot index={3} className="shad-otp-slot" />
+                            <InputOTPSlot index={4} className="shad-otp-slot" />
+                            <InputOTPSlot index={5} className="shad-otp-slot" />
+                        </InputOTPGroup>
+                    </InputOTP>
+                    {otpError && <p className="text-center text-sm text-red-500">{otpError}</p>}
+                    <AlertDialogFooter>
+                        <AlertDialogAction
+                            className="shad-submit-btn h-12"
+                            type="submit"
+                        >
+                            Submit
+                            {isLoading && (
+                                <Image
+                                    src="/assets/icons/loader.svg"
+                                    alt="loader"
+                                    width={24}
+                                    height={24}
+                                    className="ml-2 animate-spin"
+                                />
+                            )}
+                        </AlertDialogAction>
 
-                <div className="subtitle-2 mt-2 text-center text-light-100">
-                    Didn&apos;t receive the OTP?
-                    <Button
-                        type="button"
-                        variant="link"
-                        className="pl-1 text-brand"
-                        onClick={handleResendOTP}
-                    >
-                        Click to resend
-                    </Button>
+                        <div className="subtitle-2 mt-2 text-center text-light-100">
+                            Didn&apos;t receive the OTP?
+                            <Button
+                                type="button"
+                                variant="link"
+                                className="pl-1 text-brand"
+                                onClick={handleResendOTP}
+                            >
+                                Click to resend
+                            </Button>
+                        </div>
+                    </AlertDialogFooter>
                 </div>
-                </div>
-            </AlertDialogFooter>
+            </form>
         </AlertDialogContent>
     </AlertDialog>
   )

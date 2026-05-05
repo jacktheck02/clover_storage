@@ -31,7 +31,7 @@ const Sidebar = ({ fullName, avatar, email }: Props) => {
           alt="Logo"
           width={200}
           height={100}
-          className="hidden lg:block"
+          className="hidden lg:block h-auto w-auto"
           priority
         />
 
