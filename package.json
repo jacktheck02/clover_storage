@@ -11,6 +11,8 @@
     "backend:dev": "wrangler dev",
     "backend:deploy": "wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "r2:cors:set": "wrangler r2 bucket cors set clover-files --file r2-cors.json",
+    "r2:cors:list": "wrangler r2 bucket cors list clover-files",
     "db:migrations:apply": "wrangler d1 migrations apply clover-db --local",
     "db:migrations:apply:remote": "wrangler d1 migrations apply clover-db --remote",
     "migrate:appwrite": "node scripts/migrate-appwrite-to-cloudflare.mjs",

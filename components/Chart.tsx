@@ -15,18 +15,7 @@ import {
   CardTitle,
   CardDescription,
 } from "@/components/ui/card";
-import { ChartConfig, ChartContainer } from "@/components/ui/chart";
 import { calculatePercentage, convertFileSize } from "@/lib/utils";
-
-const chartConfig = {
-  size: {
-    label: "Size",
-  },
-  used: {
-    label: "Used",
-    color: "white",
-  },
-} satisfies ChartConfig;
 
 export const Chart = ({ used = 0 }: { used: number }) => {
   // Ensure used is a valid number
@@ -52,8 +41,10 @@ export const Chart = ({ used = 0 }: { used: number }) => {
   return (
     <Card className="chart">
       <CardContent className="flex-1 p-0">
-        <ChartContainer config={chartConfig} className="chart-container">
+        <div className="chart-container">
           <RadialBarChart
+            width={200}
+            height={200}
             data={chartData}
             startAngle={90}
             endAngle={endAngle}
@@ -101,7 +92,7 @@ export const Chart = ({ used = 0 }: { used: number }) => {
               />
             </PolarRadiusAxis>
           </RadialBarChart>
-        </ChartContainer>
+        </div>
       </CardContent>
       <CardHeader className="chart-details">
         <CardTitle className="chart-title">Available Storage</CardTitle>
