@@ -19,8 +19,6 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
     types,
     searchText,
     sort,
-    userId: currentUser.$id,
-    userEmail: currentUser.email,
   });
 
   return (

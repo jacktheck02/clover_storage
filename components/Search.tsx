@@ -10,13 +10,7 @@ import Thumbnail from "@/components/Thumbnail";
 import FormattedDateTime from "@/components/FormattedDateTime";
 import { useDebounce } from "use-debounce";
 
-const Search = ({
-  userId,
-  userEmail,
-}: {
-  userId: string;
-  userEmail: string;
-}) => {
+const Search = () => {
   const [query, setQuery] = useState("");
   const searchParams = useSearchParams();
   const searchQuery = searchParams.get("query") || "";
@@ -37,15 +31,13 @@ const Search = ({
       const files = await getFiles({
         types: [],
         searchText: debouncedQuery,
-        userId,
-        userEmail,
       });
       setResults(files.documents);
       setOpen(true);
     };
 
     fetchFiles();
-  }, [debouncedQuery, userEmail, userId, path, router, searchParams]);
+  }, [debouncedQuery, path, router, searchParams]);
 
   useEffect(() => {
     if (!searchQuery) {

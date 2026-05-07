@@ -12,12 +12,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
 
 interface Props {
-  ownerId: string;
-  accountId: string;
   className?: string;
 }
 
-const FileUploader = ({ ownerId, accountId, className }: Props) => {
+const FileUploader = ({ className }: Props) => {
   const path = usePathname();
   const router = useRouter();
   const { toast } = useToast();
@@ -52,8 +50,6 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
             name: file.name,
             size: file.size,
             type: file.type || "application/octet-stream",
-            ownerId,
-            accountId,
             path,
           }),
         });
@@ -117,7 +113,7 @@ const FileUploader = ({ ownerId, accountId, className }: Props) => {
         router.refresh();
       }
     },
-    [accountId, ownerId, path, router, toast],
+    [path, router, toast],
   );
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });

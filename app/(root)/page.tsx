@@ -19,10 +19,8 @@ const Dashboard = async () => {
     getFiles({
       types: [],
       limit: 10,
-      userId: currentUser.$id,
-      userEmail: currentUser.email,
     }),
-    getTotalSpaceUsed(currentUser.$id),
+    getTotalSpaceUsed(),
   ]);
 
   // Get usage summary

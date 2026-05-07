@@ -1,5 +1,6 @@
 import { AwsClient } from "aws4fetch";
 import { Resend } from "resend";
+import { z } from "zod";
 
 type Env = {
   DB: D1Database;
@@ -21,11 +22,92 @@ type D1Value = string | number | boolean | null;
 type FileType = "document" | "image" | "video" | "audio" | "other";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const USER_STORAGE_LIMIT = 128 * 1024 * 1024;
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OTP_MAX_AGE_SECONDS = 5 * 60;
 const AVATAR_PLACEHOLDER_URL =
   "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_960_720.png";
 const encoder = new TextEncoder();
+
+const fileTypeValues = ["document", "image", "video", "audio", "other"] as const;
+const sortValues = [
+  "$createdAt-desc",
+  "$createdAt-asc",
+  "$updatedAt-desc",
+  "$updatedAt-asc",
+  "name-desc",
+  "name-asc",
+  "size-desc",
+  "size-asc",
+] as const;
+const dangerousInlineExtensions = new Set([
+  "css",
+  "htm",
+  "html",
+  "js",
+  "json",
+  "mjs",
+  "svg",
+  "xhtml",
+  "xml",
+]);
+const inlineSafeMimeTypes = new Set([
+  "application/pdf",
+  "audio/flac",
+  "audio/mpeg",
+  "audio/mp4",
+  "audio/ogg",
+  "audio/wav",
+  "image/bmp",
+  "image/gif",
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "text/csv",
+  "text/markdown",
+  "text/plain",
+  "video/mp4",
+  "video/quicktime",
+  "video/webm",
+]);
+
+const emailSchema = z.string().trim().toLowerCase().email().max(254);
+const actorSchema = z.object({
+  userId: z.string().uuid(),
+  email: emailSchema,
+});
+const sortSchema = z
+  .enum(sortValues)
+  .optional()
+  .catch("$createdAt-desc")
+  .default("$createdAt-desc");
+const fileListSchema = z.object({
+  types: z.array(z.enum(fileTypeValues)).max(fileTypeValues.length).default([]),
+  searchText: z.string().trim().max(100).default(""),
+  sort: z
+    .preprocess((value) => (value === "" ? undefined : value), sortSchema)
+    .optional()
+    .default("$createdAt-desc"),
+  limit: z.number().int().min(1).max(100).optional(),
+});
+const fileIdSchema = z.string().uuid();
+const renameFileSchema = z.object({
+  fileId: fileIdSchema,
+  name: z.string().trim().min(1).max(180).regex(/^[^\r\n/\\]+$/),
+  extension: z.string().trim().max(32).regex(/^[a-zA-Z0-9]*$/),
+});
+const shareFileSchema = z.object({
+  fileId: fileIdSchema,
+  emails: z.array(emailSchema).max(50),
+});
+const fileMutationSchema = z.object({
+  fileId: fileIdSchema,
+});
+const uploadIntentSchema = z.object({
+  name: z.string().trim().min(1).max(255).regex(/^[^\r\n/\\]+$/),
+  size: z.number().int().positive().max(MAX_FILE_SIZE),
+  type: z.string().trim().max(100).optional(),
+});
 
 type UserRow = {
   id: string;
@@ -100,6 +182,15 @@ async function bodyJson<T>(request: Request) {
   return (await request.json().catch(() => ({}))) as T;
 }
 
+async function parseBody<T extends z.ZodType>(request: Request, schema: T) {
+  const body = await request.json().catch(() => ({}));
+  const result = schema.safeParse(body);
+  if (!result.success) {
+    throw new Response("Invalid request", { status: 400 });
+  }
+  return result.data;
+}
+
 function assertAuthorized(request: Request, env: Env) {
   const expected = env.CLOVER_BACKEND_SECRET;
   const actual = request.headers.get("x-clover-backend-secret");
@@ -108,8 +199,94 @@ function assertAuthorized(request: Request, env: Env) {
   }
 }
 
+function getActor(request: Request) {
+  const result = actorSchema.safeParse({
+    userId: request.headers.get("x-clover-user-id") || "",
+    email: request.headers.get("x-clover-user-email") || "",
+  });
+  if (!result.success) {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+  return result.data;
+}
+
+function getExtension(fileName: string) {
+  return fileName.split(".").pop()?.toLowerCase() || "";
+}
+
+function getCanonicalMimeType(fileName: string) {
+  const extension = getExtension(fileName);
+  if (!extension || dangerousInlineExtensions.has(extension)) {
+    return "application/octet-stream";
+  }
+
+  const mimeByExtension: Record<string, string> = {
+    bmp: "image/bmp",
+    csv: "text/csv",
+    flac: "audio/flac",
+    gif: "image/gif",
+    jpeg: "image/jpeg",
+    jpg: "image/jpeg",
+    m4a: "audio/mp4",
+    md: "text/markdown",
+    mov: "video/quicktime",
+    mp3: "audio/mpeg",
+    mp4: "video/mp4",
+    ogg: "audio/ogg",
+    pdf: "application/pdf",
+    png: "image/png",
+    txt: "text/plain",
+    wav: "audio/wav",
+    webm: "video/webm",
+    webp: "image/webp",
+  };
+
+  return mimeByExtension[extension] || "application/octet-stream";
+}
+
+function isInlineSafeMimeType(mimeType: string) {
+  return inlineSafeMimeTypes.has(mimeType.split(";")[0].toLowerCase());
+}
+
+function contentDisposition(disposition: "attachment" | "inline", fileName: string) {
+  const fallback = fileName
+    .replace(/[\r\n"]/g, "_")
+    .replace(/[^\x20-\x7E]/g, "_")
+    .slice(0, 180) || "file";
+  return `${disposition}; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(fileName)}`;
+}
+
+async function getReservedStorage(env: Env, userId: string) {
+  const result = await env.DB.prepare(
+    `SELECT COALESCE(SUM(size), 0) AS used
+     FROM files
+     WHERE owner_id = ? AND status IN ('pending', 'active')`
+  )
+    .bind(userId)
+    .first<{ used: number }>();
+  return result?.used || 0;
+}
+
+async function getActiveStorage(env: Env, userId: string) {
+  const result = await env.DB.prepare(
+    `SELECT COALESCE(SUM(size), 0) AS used
+     FROM files
+     WHERE owner_id = ? AND status = 'active'`
+  )
+    .bind(userId)
+    .first<{ used: number }>();
+  return result?.used || 0;
+}
+
+async function rejectPendingUpload(env: Env, fileId: string, r2Key: string) {
+  await env.FILES_BUCKET.delete(r2Key);
+  await env.DB.prepare("DELETE FROM files WHERE id = ? AND status = 'pending'")
+    .bind(fileId)
+    .run();
+}
+
 function getFileType(fileName: string) {
-  const extension = fileName.split(".").pop()?.toLowerCase() || "";
+  const extension = getExtension(fileName);
   const documents = [
     "pdf",
     "doc",
@@ -137,7 +314,7 @@ function getFileType(fileName: string) {
     "afphoto",
   ];
   if (documents.includes(extension)) return { type: "document" as const, extension };
-  if (["jpg", "jpeg", "png", "gif", "bmp", "svg", "webp"].includes(extension)) {
+  if (["jpg", "jpeg", "png", "gif", "bmp", "webp"].includes(extension)) {
     return { type: "image" as const, extension };
   }
   if (["mp4", "avi", "mov", "mkv", "webm"].includes(extension)) {
@@ -447,14 +624,8 @@ async function handleAuth(request: Request, env: Env, path: string) {
 
 async function handleFiles(request: Request, env: Env, path: string) {
   if (path === "/files/list") {
-    const body = await bodyJson<{
-      ownerId: string;
-      email: string;
-      types?: string[];
-      searchText?: string;
-      sort?: string;
-      limit?: number;
-    }>(request);
+    const actor = getActor(request);
+    const body = await parseBody(request, fileListSchema);
     const conditions = [
       "f.status = 'active'",
       `(f.owner_id = ? OR EXISTS (
@@ -462,7 +633,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
         WHERE fs.file_id = f.id AND fs.email = ?
       ))`,
     ];
-    const values: D1Value[] = [body.ownerId, normalizeEmail(body.email)];
+    const values: D1Value[] = [actor.userId, actor.email];
     if (body.types?.length) {
       conditions.push(`f.type IN (${body.types.map(() => "?").join(", ")})`);
       values.push(...body.types);
@@ -472,7 +643,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
       values.push(`%${body.searchText.toLowerCase()}%`);
     }
 
-    const [rawSortBy = "$createdAt", rawOrderBy = "desc"] = (body.sort || "$createdAt-desc").split("-");
+    const [rawSortBy = "$createdAt", rawOrderBy = "desc"] = body.sort.split("-");
     const sortMap: Record<string, string> = {
       $createdAt: "f.created_at",
       $updatedAt: "f.updated_at",
@@ -511,26 +682,28 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/rename") {
-    const body = await bodyJson<{ userId: string; fileId: string; name: string; extension: string }>(request);
+    const actor = getActor(request);
+    const body = await parseBody(request, renameFileSchema);
     await env.DB.prepare(
       `UPDATE files SET name = ?, updated_at = ? WHERE id = ? AND owner_id = ?`
     )
-      .bind(`${body.name}.${body.extension}`, nowIso(), body.fileId, body.userId)
+      .bind(`${body.name}.${body.extension}`, nowIso(), body.fileId, actor.userId)
       .run();
     return json({ status: "success" });
   }
 
   if (path === "/files/share") {
-    const body = await bodyJson<{ userId: string; userEmail: string; fileId: string; emails: string[] }>(request);
+    const actor = getActor(request);
+    const body = await parseBody(request, shareFileSchema);
     const ownedFile = await env.DB.prepare("SELECT id FROM files WHERE id = ? AND owner_id = ?")
-      .bind(body.fileId, body.userId)
+      .bind(body.fileId, actor.userId)
       .first<{ id: string }>();
     if (!ownedFile) throw new Response("File not found", { status: 404 });
     const emails = [
       ...new Set(
         body.emails
           .map((email) => normalizeEmail(email))
-          .filter((email) => email && email !== normalizeEmail(body.userEmail))
+          .filter((email) => email && email !== actor.email)
       ),
     ];
     const now = nowIso();
@@ -546,9 +719,10 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/delete") {
-    const body = await bodyJson<{ userId: string; fileId: string }>(request);
+    const actor = getActor(request);
+    const body = await parseBody(request, fileMutationSchema);
     const file = await env.DB.prepare("SELECT r2_key FROM files WHERE id = ? AND owner_id = ?")
-      .bind(body.fileId, body.userId)
+      .bind(body.fileId, actor.userId)
       .first<{ r2_key: string }>();
     if (!file) throw new Response("File not found", { status: 404 });
     await env.DB.prepare("DELETE FROM files WHERE id = ?").bind(body.fileId).run();
@@ -557,11 +731,11 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/total-space") {
-    const body = await bodyJson<{ ownerId: string }>(request);
+    const actor = getActor(request);
     const rows = await env.DB.prepare(
       "SELECT type, size, updated_at FROM files WHERE owner_id = ? AND status = 'active'"
     )
-      .bind(body.ownerId)
+      .bind(actor.userId)
       .all<{ type: FileType; size: number; updated_at: string }>();
     const totalSpace = {
       image: { size: 0, latestDate: "" },
@@ -587,43 +761,55 @@ async function handleFiles(request: Request, env: Env, path: string) {
 
 async function handleUploads(request: Request, env: Env, path: string) {
   if (path === "/uploads/intent") {
-    const body = await bodyJson<{ userId: string; name: string; size: number; type?: string }>(request);
-    if (!body.name || !body.size || body.size <= 0) {
-      throw new Response("Invalid file metadata", { status: 400 });
+    const actor = getActor(request);
+    const body = await parseBody(request, uploadIntentSchema);
+    await assertRateLimit(env, actor.userId, "upload-intent", 30, 60);
+    const reservedStorage = await getReservedStorage(env, actor.userId);
+    if (reservedStorage + body.size > USER_STORAGE_LIMIT) {
+      throw new Response("Storage quota exceeded", { status: 413 });
     }
-    if (body.size > MAX_FILE_SIZE) {
-      throw new Response("File too large", { status: 413 });
-    }
-    await assertRateLimit(env, body.userId, "upload-intent", 30, 60);
     const fileId = crypto.randomUUID();
     const now = nowIso();
     const { type, extension } = getFileType(body.name);
-    const r2Key = buildR2Key(body.userId, fileId, body.name);
+    const r2Key = buildR2Key(actor.userId, fileId, body.name);
+    const mimeType = getCanonicalMimeType(body.name);
     await env.DB.prepare(
       `INSERT INTO files
         (id, owner_id, r2_key, name, extension, type, size, mime_type, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     )
-      .bind(fileId, body.userId, r2Key, body.name, extension, type, body.size, body.type || "application/octet-stream", now, now)
+      .bind(fileId, actor.userId, r2Key, body.name, extension, type, body.size, mimeType, now, now)
       .run();
     const uploadUrl = await createPresignedUploadUrl(env, r2Key);
     return json({ fileId, r2Key, uploadUrl, method: "PUT", directToR2: Boolean(uploadUrl) });
   }
 
   if (path === "/uploads/complete") {
-    const body = await bodyJson<{ userId: string; fileId: string }>(request);
+    const actor = getActor(request);
+    const body = await parseBody(request, fileMutationSchema);
     const pending = await env.DB.prepare(
-      `SELECT r2_key FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
+      `SELECT r2_key, size FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
     )
-      .bind(body.fileId, body.userId)
-      .first<{ r2_key: string }>();
+      .bind(body.fileId, actor.userId)
+      .first<{ r2_key: string; size: number }>();
     if (!pending) throw new Response("Upload not found", { status: 404 });
     const object = await env.FILES_BUCKET.head(pending.r2_key);
     if (!object) throw new Response("Object was not uploaded", { status: 400 });
+    if (object.size !== pending.size || object.size > MAX_FILE_SIZE) {
+      await rejectPendingUpload(env, body.fileId, pending.r2_key);
+      throw new Response("Uploaded object size does not match the upload intent", {
+        status: 400,
+      });
+    }
+    const activeStorage = await getActiveStorage(env, actor.userId);
+    if (activeStorage + object.size > USER_STORAGE_LIMIT) {
+      await rejectPendingUpload(env, body.fileId, pending.r2_key);
+      throw new Response("Storage quota exceeded", { status: 413 });
+    }
     await env.DB.prepare(
       "UPDATE files SET status = 'active', updated_at = ? WHERE id = ? AND owner_id = ?"
     )
-      .bind(nowIso(), body.fileId, body.userId)
+      .bind(nowIso(), body.fileId, actor.userId)
       .run();
     return json({ status: "success" });
   }
@@ -631,19 +817,31 @@ async function handleUploads(request: Request, env: Env, path: string) {
   const directMatch = path.match(/^\/uploads\/direct\/([^/]+)$/);
   if (directMatch && request.method === "PUT") {
     const fileId = directMatch[1];
-    const userId = request.headers.get("x-clover-user-id");
-    if (!userId) throw new Response("Unauthorized", { status: 401 });
+    const actor = getActor(request);
     const file = await env.DB.prepare(
-      `SELECT r2_key, mime_type FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
+      `SELECT r2_key, mime_type, size FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
     )
-      .bind(fileId, userId)
-      .first<{ r2_key: string; mime_type: string }>();
+      .bind(fileId, actor.userId)
+      .first<{ r2_key: string; mime_type: string; size: number }>();
     if (!file) throw new Response("Upload not found", { status: 404 });
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength && contentLength !== file.size) {
+      throw new Response("Uploaded object size does not match the upload intent", {
+        status: 400,
+      });
+    }
     await env.FILES_BUCKET.put(file.r2_key, request.body, {
       httpMetadata: {
-        contentType: request.headers.get("content-type") || file.mime_type,
+        contentType: file.mime_type,
       },
     });
+    const object = await env.FILES_BUCKET.head(file.r2_key);
+    if (!object || object.size !== file.size || object.size > MAX_FILE_SIZE) {
+      await rejectPendingUpload(env, fileId, file.r2_key);
+      throw new Response("Uploaded object size does not match the upload intent", {
+        status: 400,
+      });
+    }
     return json({ status: "uploaded" });
   }
 
@@ -654,9 +852,7 @@ async function handleFileObject(request: Request, env: Env, path: string) {
   const match = path.match(/^\/files\/([^/]+)\/(view|download)$/);
   if (!match) return null;
   const [, fileId, mode] = match;
-  const userId = request.headers.get("x-clover-user-id");
-  const email = request.headers.get("x-clover-user-email");
-  if (!userId || !email) throw new Response("Unauthorized", { status: 401 });
+  const actor = getActor(request);
   const file = await env.DB.prepare(
     `SELECT f.r2_key, f.name, f.mime_type
      FROM files f
@@ -670,7 +866,7 @@ async function handleFileObject(request: Request, env: Env, path: string) {
          )
        )`
   )
-    .bind(fileId, userId, normalizeEmail(email))
+    .bind(fileId, actor.userId, actor.email)
     .first<{ r2_key: string; name: string; mime_type: string }>();
   if (!file) return new Response("Not found", { status: 404 });
   const rangeHeader = request.headers.get("range");
@@ -680,9 +876,15 @@ async function handleFileObject(request: Request, env: Env, path: string) {
   );
   if (!object) return new Response("Not found", { status: 404 });
   const headers = new Headers();
-  object.writeHttpMetadata(headers);
-  headers.set("content-type", file.mime_type || "application/octet-stream");
+  const inlineSafe = mode === "view" && isInlineSafeMimeType(file.mime_type);
+  if (inlineSafe) {
+    object.writeHttpMetadata(headers);
+  }
+  headers.set("content-type", inlineSafe ? file.mime_type : "application/octet-stream");
   headers.set("accept-ranges", "bytes");
+  headers.set("x-content-type-options", "nosniff");
+  headers.set("referrer-policy", "no-referrer");
+  headers.set("content-security-policy", "default-src 'none'; sandbox");
 
   let status = 200;
   const partialRange = (object as R2ObjectBody & { range?: { offset?: number; length?: number } }).range;
@@ -694,9 +896,10 @@ async function handleFileObject(request: Request, env: Env, path: string) {
     status = 206;
   }
 
-  if (mode === "download") {
-    headers.set("content-disposition", `attachment; filename="${file.name.replaceAll('"', '\\"')}"`);
+  if (mode === "download" || !inlineSafe) {
+    headers.set("content-disposition", contentDisposition("attachment", file.name));
   } else {
+    headers.set("content-disposition", contentDisposition("inline", file.name));
     headers.set("cache-control", "private, max-age=60");
   }
   return new Response(object.body, { headers, status });

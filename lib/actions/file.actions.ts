@@ -4,44 +4,34 @@ import { parseStringify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
+import {
+  deleteFileSchema,
+  getActorHeaders,
+  getFilesSchema,
+  getSafeRevalidationPath,
+  renameFileSchema,
+  updateFileUsersSchema,
+} from "@/lib/security";
 
 const handleError = (error: unknown, message: string) => {
   console.log(error, message);
   throw error;
 };
 
-export const getFiles = async ({
-  types = [],
-  searchText = "",
-  sort = "$createdAt-desc",
-  limit,
-  userId,
-  userEmail,
-}: GetFilesProps) => {
+export const getFiles = async (input: GetFilesProps = {}) => {
   try {
-    let ownerId = userId;
-    let email = userEmail;
-
-    if (!ownerId || !email) {
-      const currentUser = await getCurrentUser();
-
-      if (!currentUser) throw new Error("User not found");
-
-      ownerId = currentUser.$id;
-      email = currentUser.email;
-    }
-
-    if (!ownerId || !email) throw new Error("User not found");
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User not found");
+    const params = getFilesSchema.parse(input);
 
     const files = await backendJson<FilesResponse>("/files/list", {
       method: "POST",
+      headers: getActorHeaders(currentUser),
       body: JSON.stringify({
-        ownerId,
-        email,
-        types,
-        searchText,
-        sort,
-        limit,
+        types: params.types,
+        searchText: params.searchText,
+        sort: params.sort,
+        limit: params.limit,
       }),
     });
 
@@ -60,18 +50,20 @@ export const renameFile = async ({
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User is not authenticated.");
+    const params = renameFileSchema.parse({ fileId, name, extension, path });
 
     await backendJson("/files/rename", {
       method: "POST",
+      headers: getActorHeaders(currentUser),
       body: JSON.stringify({
-        userId: currentUser.$id,
-        fileId,
-        name,
-        extension,
+        fileId: params.fileId,
+        name: params.name,
+        extension: params.extension,
       }),
     });
 
-    revalidatePath(path);
+    const revalidationPath = getSafeRevalidationPath(params.path);
+    if (revalidationPath) revalidatePath(revalidationPath);
     return parseStringify({ status: "success" });
   } catch (error) {
     handleError(error, "Failed to rename file");
@@ -86,17 +78,18 @@ export const updateFileUsers = async ({
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User is not authenticated.");
+    const params = updateFileUsersSchema.parse({ fileId, emails, path });
     await backendJson("/files/share", {
       method: "POST",
+      headers: getActorHeaders(currentUser),
       body: JSON.stringify({
-        userId: currentUser.$id,
-        userEmail: currentUser.email,
-        fileId,
-        emails,
+        fileId: params.fileId,
+        emails: params.emails,
       }),
     });
 
-    revalidatePath(path);
+    const revalidationPath = getSafeRevalidationPath(params.path);
+    if (revalidationPath) revalidatePath(revalidationPath);
     return parseStringify({ status: "success" });
   } catch (error) {
     handleError(error, "Failed to update file users");
@@ -110,16 +103,18 @@ export const deleteFile = async ({
   try {
     const currentUser = await getCurrentUser();
     if (!currentUser) throw new Error("User is not authenticated.");
+    const params = deleteFileSchema.parse({ fileId, path });
 
     await backendJson("/files/delete", {
       method: "POST",
+      headers: getActorHeaders(currentUser),
       body: JSON.stringify({
-        userId: currentUser.$id,
-        fileId,
+        fileId: params.fileId,
       }),
     });
 
-    revalidatePath(path);
+    const revalidationPath = getSafeRevalidationPath(params.path);
+    if (revalidationPath) revalidatePath(revalidationPath);
     return parseStringify({ status: "success" });
   } catch (error) {
     handleError(error, "Failed to delete file");
@@ -127,19 +122,15 @@ export const deleteFile = async ({
 };
 
 // ============================== TOTAL FILE SPACE USED
-export async function getTotalSpaceUsed(ownerId?: string) {
+export async function getTotalSpaceUsed() {
   try {
-    let currentUserId = ownerId;
-
-    if (!currentUserId) {
-      const currentUser = await getCurrentUser();
-      if (!currentUser) throw new Error("User is not authenticated.");
-      currentUserId = currentUser.$id;
-    }
+    const currentUser = await getCurrentUser();
+    if (!currentUser) throw new Error("User is not authenticated.");
 
     const totalSpace = await backendJson("/files/total-space", {
       method: "POST",
-      body: JSON.stringify({ ownerId: currentUserId }),
+      headers: getActorHeaders(currentUser),
+      body: JSON.stringify({}),
     });
 
     return parseStringify(totalSpace);

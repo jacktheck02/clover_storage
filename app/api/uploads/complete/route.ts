@@ -1,11 +1,11 @@
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
 import { revalidatePath } from "next/cache";
-
-type CompleteBody = {
-  fileId?: string;
-  path?: string;
-};
+import {
+  fileIdBodySchema,
+  getActorHeaders,
+  getSafeRevalidationPath,
+} from "@/lib/security";
 
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
@@ -13,20 +13,23 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as CompleteBody;
-  if (!body.fileId) {
+  const result = fileIdBodySchema.safeParse(
+    await request.json().catch(() => ({}))
+  );
+  if (!result.success) {
     return Response.json({ error: "Missing file id" }, { status: 400 });
   }
 
   await backendJson("/uploads/complete", {
     method: "POST",
+    headers: getActorHeaders(currentUser),
     body: JSON.stringify({
-      userId: currentUser.$id,
-      fileId: body.fileId,
+      fileId: result.data.fileId,
     }),
   });
 
-  if (body.path) revalidatePath(body.path);
+  const revalidationPath = getSafeRevalidationPath(result.data.path);
+  if (revalidationPath) revalidatePath(revalidationPath);
 
   return Response.json({ status: "success" });
 }

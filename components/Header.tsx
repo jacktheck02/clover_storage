@@ -6,21 +6,13 @@ import FileUploader from "@/components/FileUploader";
 import { signOutUser } from "@/lib/actions/user.actions";
 import ThemeToggle from "@/components/ThemeToggle";
 
-const Header = ({
-  userId,
-  accountId,
-  email,
-}: {
-  userId: string;
-  accountId: string;
-  email: string;
-}) => {
+const Header = () => {
   return (
     <header className="header">
-      <Search userId={userId} userEmail={email} />
+      <Search />
       <div className="header-wrapper">
         <ThemeToggle />
-        <FileUploader ownerId={userId} accountId={accountId} />
+        <FileUploader />
         <form
           action={async () => {
             "use server";

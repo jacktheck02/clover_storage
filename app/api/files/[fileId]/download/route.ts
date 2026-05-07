@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendRaw } from "@/lib/backend/client";
+import { getActorHeaders } from "@/lib/security";
 
 export async function GET(
   _request: Request,
@@ -10,10 +11,7 @@ export async function GET(
 
   const { fileId } = await params;
   const response = await backendRaw(`/files/${fileId}/download`, {
-    headers: {
-      "x-clover-user-id": currentUser.$id,
-      "x-clover-user-email": currentUser.email,
-    },
+    headers: getActorHeaders(currentUser),
   });
 
   return new Response(response.body, {

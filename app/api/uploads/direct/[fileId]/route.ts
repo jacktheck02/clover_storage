@@ -1,5 +1,6 @@
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendRaw } from "@/lib/backend/client";
+import { getActorHeaders, MAX_FILE_SIZE_BYTES } from "@/lib/security";
 
 export async function PUT(
   request: Request,
@@ -12,12 +13,17 @@ export async function PUT(
     }
 
     const { fileId } = await params;
+    const contentLength = Number(request.headers.get("content-length") || 0);
+    if (contentLength > MAX_FILE_SIZE_BYTES) {
+      return Response.json({ error: "File too large" }, { status: 413 });
+    }
+
     const response = await backendRaw(`/uploads/direct/${fileId}`, {
       method: "PUT",
       headers: {
         "content-type":
           request.headers.get("content-type") || "application/octet-stream",
-        "x-clover-user-id": currentUser.$id,
+        ...getActorHeaders(currentUser),
       },
       body: request.body,
       duplex: "half",

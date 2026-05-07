@@ -48,17 +48,13 @@ declare interface SearchParamProps {
 
 declare interface UploadFileProps {
   file: File;
-  ownerId: string;
-  accountId: string;
   path: string;
 }
 declare interface GetFilesProps {
-  types: FileType[];
+  types?: FileType[];
   searchText?: string;
   sort?: string;
   limit?: number;
-  userId?: string;
-  userEmail?: string;
 }
 declare interface RenameFileProps {
   fileId: string;
@@ -77,14 +73,10 @@ declare interface DeleteFileProps {
 }
 
 declare interface FileUploaderProps {
-  ownerId: string;
-  accountId: string;
   className?: string;
 }
 
 declare interface MobileNavigationProps {
-  ownerId: string;
-  accountId: string;
   fullName: string;
   avatar: string;
   email: string;
@@ -108,3 +100,5 @@ declare interface ShareInputProps {
   onInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onRemove: (email: string) => void;
 }
+
+declare module "jsmediatags/dist/jsmediatags.min.js";

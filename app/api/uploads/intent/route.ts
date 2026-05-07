@@ -1,12 +1,7 @@
 import { MAX_FILE_SIZE } from "@/constants";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
-
-type UploadIntentBody = {
-  name?: string;
-  size?: number;
-  type?: string;
-};
+import { getActorHeaders, uploadIntentSchema } from "@/lib/security";
 
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
@@ -14,12 +9,14 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const body = (await request.json().catch(() => ({}))) as UploadIntentBody;
-  if (!body.name || !body.size || body.size <= 0) {
+  const result = uploadIntentSchema.safeParse(
+    await request.json().catch(() => ({}))
+  );
+  if (!result.success) {
     return Response.json({ error: "Invalid file metadata" }, { status: 400 });
   }
 
-  if (body.size > MAX_FILE_SIZE) {
+  if (result.data.size > MAX_FILE_SIZE) {
     return Response.json({ error: "File too large" }, { status: 413 });
   }
 
@@ -31,11 +28,11 @@ export async function POST(request: Request) {
     directToR2: boolean;
   }>("/uploads/intent", {
     method: "POST",
+    headers: getActorHeaders(currentUser),
     body: JSON.stringify({
-      userId: currentUser.$id,
-      name: body.name,
-      size: body.size,
-      type: body.type || "application/octet-stream",
+      name: result.data.name,
+      size: result.data.size,
+      type: result.data.type || "application/octet-stream",
     }),
   });
 

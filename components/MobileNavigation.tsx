@@ -19,16 +19,12 @@ import { signOutUser } from "@/lib/actions/user.actions";
 import ThemeToggle from "@/components/ThemeToggle";
 
 interface Props {
-  $id: string;
-  accountId: string;
   fullName: string;
   avatar: string;
   email: string;
 }
 
 const MobileNavigation = ({
-  $id: ownerId,
-  accountId,
   fullName,
   avatar,
   email,
@@ -115,7 +111,7 @@ const MobileNavigation = ({
           <div className="flex flex-col justify-between gap-5 pb-5">
             <div className="flex items-center gap-3">
               <ThemeToggle />
-              <FileUploader ownerId={ownerId} accountId={accountId} />
+              <FileUploader />
             </div>
             <Button
               type="submit"
