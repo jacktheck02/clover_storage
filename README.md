@@ -105,6 +105,8 @@ npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM_EMAIL
 ```
 
+OTP codes are not logged by default when email delivery is missing. For local-only debugging without Resend, set `AUTH_DEBUG_OTP_LOGGING=true` in your local Worker environment; do not enable it in production.
+
 `CLOUDFLARE_API_TOKEN` is only for Wrangler resource/deploy commands. Keep it in your local shell or CI secret store, not in Vercel runtime variables and never in source.
 
 ### 5. Run development servers
@@ -151,6 +153,12 @@ Clean up stale pending upload rows and orphaned R2 objects:
 
 ```bash
 npm run cleanup:uploads
+```
+
+If you previously enabled direct browser uploads to R2, reapply the checked-in CORS policy after deployment:
+
+```bash
+npm run r2:cors:set
 ```
 
 ## Learn More

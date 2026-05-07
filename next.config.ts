@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   experimental: {
     serverActions: {
-      bodySizeLimit: "100MB",
+      bodySizeLimit: "1MB",
     },
   },
   images: {
@@ -23,6 +20,10 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
+    const isDevelopment = process.env.NODE_ENV !== "production";
+    const scriptSrc = ["'self'", "'unsafe-inline'"];
+    if (isDevelopment) scriptSrc.push("'unsafe-eval'");
+
     const securityHeaders = [
       {
         key: "Content-Security-Policy",
@@ -34,9 +35,11 @@ const nextConfig: NextConfig = {
           "form-action 'self'",
           "img-src 'self' data: blob: https://cdn.pixabay.com https://img.freepik.com",
           "media-src 'self' blob:",
-          "connect-src 'self' https://*.r2.cloudflarestorage.com",
-          "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+          "connect-src 'self'",
+          `script-src ${scriptSrc.join(" ")}`,
           "style-src 'self' 'unsafe-inline'",
+          "worker-src 'self' blob:",
+          ...(isDevelopment ? [] : ["upgrade-insecure-requests"]),
         ].join("; "),
       },
       { key: "X-Content-Type-Options", value: "nosniff" },

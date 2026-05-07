@@ -5,6 +5,7 @@ import {
   fileIdBodySchema,
   getActorHeaders,
   getSafeRevalidationPath,
+  parseJsonRequest,
 } from "@/lib/security";
 
 export async function POST(request: Request) {
@@ -13,9 +14,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = fileIdBodySchema.safeParse(
-    await request.json().catch(() => ({}))
-  );
+  let body: unknown;
+  try {
+    body = await parseJsonRequest(request);
+  } catch (error) {
+    if (error instanceof Response) return error;
+    body = {};
+  }
+
+  const result = fileIdBodySchema.safeParse(body);
   if (!result.success) {
     return Response.json({ error: "Missing file id" }, { status: 400 });
   }

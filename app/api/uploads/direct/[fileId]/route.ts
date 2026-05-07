@@ -1,6 +1,10 @@
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendRaw } from "@/lib/backend/client";
-import { getActorHeaders, MAX_FILE_SIZE_BYTES } from "@/lib/security";
+import {
+  fileIdParamSchema,
+  getActorHeaders,
+  MAX_FILE_SIZE_BYTES,
+} from "@/lib/security";
 
 export async function PUT(
   request: Request,
@@ -12,13 +16,18 @@ export async function PUT(
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { fileId } = await params;
+    const { fileId: rawFileId } = await params;
+    const fileId = fileIdParamSchema.safeParse(rawFileId);
+    if (!fileId.success) {
+      return Response.json({ error: "Invalid file id" }, { status: 400 });
+    }
+
     const contentLength = Number(request.headers.get("content-length") || 0);
     if (contentLength > MAX_FILE_SIZE_BYTES) {
       return Response.json({ error: "File too large" }, { status: 413 });
     }
 
-    const response = await backendRaw(`/uploads/direct/${fileId}`, {
+    const response = await backendRaw(`/uploads/direct/${fileId.data}`, {
       method: "PUT",
       headers: {
         "content-type":

@@ -1,7 +1,11 @@
 import { MAX_FILE_SIZE } from "@/constants";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
-import { getActorHeaders, uploadIntentSchema } from "@/lib/security";
+import {
+  getActorHeaders,
+  parseJsonRequest,
+  uploadIntentSchema,
+} from "@/lib/security";
 
 export async function POST(request: Request) {
   const currentUser = await getCurrentUser();
@@ -9,9 +13,15 @@ export async function POST(request: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const result = uploadIntentSchema.safeParse(
-    await request.json().catch(() => ({}))
-  );
+  let body: unknown;
+  try {
+    body = await parseJsonRequest(request);
+  } catch (error) {
+    if (error instanceof Response) return error;
+    body = {};
+  }
+
+  const result = uploadIntentSchema.safeParse(body);
   if (!result.success) {
     return Response.json({ error: "Invalid file metadata" }, { status: 400 });
   }

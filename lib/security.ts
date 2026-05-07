@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const APP_PATHS = ["/", "/documents", "/images", "/media", "/others"] as const;
 export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_JSON_BODY_BYTES = 16 * 1024;
 
 export const fileTypeSchema = z.enum([
   "document",
@@ -45,6 +46,7 @@ export const fileIdBodySchema = z.object({
   fileId: z.string().uuid(),
   path: z.string().max(100).optional(),
 });
+export const fileIdParamSchema = z.string().uuid();
 
 export const renameFileSchema = z.object({
   fileId: z.string().uuid(),
@@ -73,4 +75,37 @@ export function getActorHeaders(user: Pick<UserDocument, "$id" | "email">) {
 
 export function getSafeRevalidationPath(path?: string) {
   return APP_PATHS.find((allowedPath) => allowedPath === path);
+}
+
+export async function parseJsonRequest(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > MAX_JSON_BODY_BYTES) {
+    throw new Response("Request body too large", { status: 413 });
+  }
+
+  if (!request.body) return {};
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytesRead = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytesRead += value.byteLength;
+    if (bytesRead > MAX_JSON_BODY_BYTES) {
+      throw new Response("Request body too large", { status: 413 });
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(bytesRead);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  if (!body.byteLength) return {};
+  return JSON.parse(new TextDecoder().decode(body));
 }

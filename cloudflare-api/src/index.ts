@@ -7,6 +7,7 @@ type Env = {
   BACKUPS_BUCKET: R2Bucket;
   CLOVER_BACKEND_SECRET: string;
   AUTH_SECRET?: string;
+  AUTH_DEBUG_OTP_LOGGING?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
   TURNSTILE_ENABLED?: string;
@@ -17,6 +18,7 @@ type D1Value = string | number | boolean | null;
 type FileType = "document" | "image" | "video" | "audio" | "other";
 
 const MAX_FILE_SIZE = 50 * 1024 * 1024;
+const MAX_JSON_BODY_SIZE = 16 * 1024;
 const USER_STORAGE_LIMIT = 128 * 1024 * 1024;
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OTP_MAX_AGE_SECONDS = 5 * 60;
@@ -24,6 +26,7 @@ const SIGNUP_ACCOUNT_PREFIX = "signup:";
 const AVATAR_PLACEHOLDER_URL =
   "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_960_720.png";
 const encoder = new TextEncoder();
+const decoder = new TextDecoder();
 
 const fileTypeValues = ["document", "image", "video", "audio", "other"] as const;
 const sortValues = [
@@ -199,12 +202,51 @@ async function hashSecret(secret: string, salt: string) {
   return toHex(buffer);
 }
 
+async function readJsonBody(request: Request) {
+  const contentLength = Number(request.headers.get("content-length") || 0);
+  if (contentLength > MAX_JSON_BODY_SIZE) {
+    throw new Response("Request body too large", { status: 413 });
+  }
+
+  if (!request.body) return {};
+
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let bytesRead = 0;
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    bytesRead += value.byteLength;
+    if (bytesRead > MAX_JSON_BODY_SIZE) {
+      throw new Response("Request body too large", { status: 413 });
+    }
+    chunks.push(value);
+  }
+
+  const body = new Uint8Array(bytesRead);
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+
+  if (!body.byteLength) return {};
+  return JSON.parse(decoder.decode(body));
+}
+
 async function bodyJson<T>(request: Request) {
-  return (await request.json().catch(() => ({}))) as T;
+  return (await readJsonBody(request).catch((error) => {
+    if (error instanceof Response) throw error;
+    return {};
+  })) as T;
 }
 
 async function parseBody<T extends z.ZodType>(request: Request, schema: T) {
-  const body = await request.json().catch(() => ({}));
+  const body = await readJsonBody(request).catch((error) => {
+    if (error instanceof Response) throw error;
+    return {};
+  });
   const result = schema.safeParse(body);
   if (!result.success) {
     throw new Response("Invalid request", { status: 400 });
@@ -455,8 +497,11 @@ async function verifyTurnstileToken(env: Env, token?: string) {
 
 async function sendOtpEmail(env: Env, email: string, otp: string) {
   if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) {
-    console.info(`Clover OTP for ${email}: ${otp}`);
-    return;
+    if (env.AUTH_DEBUG_OTP_LOGGING === "true") {
+      console.info(`Clover OTP for ${email}: ${otp}`);
+      return;
+    }
+    throw new Response("Email delivery is not configured", { status: 500 });
   }
 
   const resend = new Resend(env.RESEND_API_KEY);
@@ -921,7 +966,9 @@ async function handleUploads(request: Request, env: Env, path: string) {
 
   const directMatch = path.match(/^\/uploads\/direct\/([^/]+)$/);
   if (directMatch && request.method === "PUT") {
-    const fileId = directMatch[1];
+    const fileIdResult = fileIdSchema.safeParse(directMatch[1]);
+    if (!fileIdResult.success) throw new Response("Invalid file id", { status: 400 });
+    const fileId = fileIdResult.data;
     const actor = getActor(request);
     const file = await env.DB.prepare(
       `SELECT r2_key, mime_type, size FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
@@ -964,7 +1011,10 @@ async function handleUploads(request: Request, env: Env, path: string) {
 async function handleFileObject(request: Request, env: Env, path: string) {
   const match = path.match(/^\/files\/([^/]+)\/(view|download)$/);
   if (!match) return null;
-  const [, fileId, mode] = match;
+  const [, rawFileId, mode] = match;
+  const fileIdResult = fileIdSchema.safeParse(rawFileId);
+  if (!fileIdResult.success) throw new Response("Invalid file id", { status: 400 });
+  const fileId = fileIdResult.data;
   const actor = getActor(request);
   const file = await env.DB.prepare(
     `SELECT f.r2_key, f.name, f.mime_type
