@@ -119,6 +119,23 @@ export const authOtps = sqliteTable(
   })
 );
 
+export const authSignupOtps = sqliteTable(
+  "auth_signup_otps",
+  {
+    id: text("id").primaryKey(),
+    email: text("email").notNull(),
+    fullName: text("full_name").notNull(),
+    otpHash: text("otp_hash").notNull(),
+    attempts: integer("attempts").notNull().default(0),
+    expiresAt: text("expires_at").notNull(),
+    createdAt: text("created_at").notNull(),
+  },
+  (table) => ({
+    emailIdx: index("auth_signup_otps_email_idx").on(table.email),
+    expiresIdx: index("auth_signup_otps_expires_idx").on(table.expiresAt),
+  })
+);
+
 export const authSessions = sqliteTable(
   "auth_sessions",
   {

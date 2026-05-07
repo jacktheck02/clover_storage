@@ -1,4 +1,3 @@
-import { AwsClient } from "aws4fetch";
 import { Resend } from "resend";
 import { z } from "zod";
 
@@ -10,10 +9,6 @@ type Env = {
   AUTH_SECRET?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
-  R2_ACCOUNT_ID?: string;
-  R2_ACCESS_KEY_ID?: string;
-  R2_SECRET_ACCESS_KEY?: string;
-  R2_BUCKET_NAME?: string;
   TURNSTILE_ENABLED?: string;
   TURNSTILE_SECRET_KEY?: string;
 };
@@ -25,6 +20,7 @@ const MAX_FILE_SIZE = 50 * 1024 * 1024;
 const USER_STORAGE_LIMIT = 128 * 1024 * 1024;
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OTP_MAX_AGE_SECONDS = 5 * 60;
+const SIGNUP_ACCOUNT_PREFIX = "signup:";
 const AVATAR_PLACEHOLDER_URL =
   "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_960_720.png";
 const encoder = new TextEncoder();
@@ -108,6 +104,22 @@ const uploadIntentSchema = z.object({
   size: z.number().int().positive().max(MAX_FILE_SIZE),
   type: z.string().trim().max(100).optional(),
 });
+const createAccountSchema = z.object({
+  fullName: z.string().trim().min(2).max(50),
+  email: emailSchema,
+  turnstileToken: z.string().optional(),
+});
+const sendOtpSchema = z.object({
+  email: emailSchema,
+  turnstileToken: z.string().optional(),
+});
+const signInSchema = z.object({
+  email: emailSchema,
+});
+const verifyOtpSchema = z.object({
+  accountId: z.string().trim().min(1).max(80),
+  password: z.string().trim().regex(/^\d{6}$/),
+});
 
 type UserRow = {
   id: string;
@@ -132,6 +144,15 @@ type FileRow = {
   owner_full_name: string;
   owner_email: string;
   shared_users: string | null;
+};
+
+type PendingSignupOtpRow = {
+  id: string;
+  email: string;
+  full_name: string;
+  otp_hash: string;
+  attempts: number;
+  expires_at: string;
 };
 
 function nowIso() {
@@ -482,64 +503,104 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   return user.id;
 }
 
-async function createPresignedUploadUrl(env: Env, key: string) {
-  if (
-    !env.R2_ACCOUNT_ID ||
-    !env.R2_ACCESS_KEY_ID ||
-    !env.R2_SECRET_ACCESS_KEY ||
-    !env.R2_BUCKET_NAME
-  ) {
-    return null;
+async function sendSignupOtp(
+  env: Env,
+  email: string,
+  fullName: string,
+  turnstileToken?: string
+) {
+  const normalizedEmail = normalizeEmail(email);
+  const verified = await verifyTurnstileToken(env, turnstileToken);
+  if (!verified) throw new Response("Failed bot check", { status: 400 });
+
+  const existingUser = await getUserByEmail(env, normalizedEmail);
+  if (existingUser) {
+    return sendEmailOtp(env, normalizedEmail, turnstileToken);
   }
 
-  const client = new AwsClient({
-    accessKeyId: env.R2_ACCESS_KEY_ID,
-    secretAccessKey: env.R2_SECRET_ACCESS_KEY,
-    service: "s3",
-    region: "auto",
-  });
-  const url = new URL(
-    `https://${env.R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${env.R2_BUCKET_NAME}/${key}`
-  );
-  url.searchParams.set("X-Amz-Expires", "300");
+  await assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60);
 
-  const signed = await client.sign(new Request(url, { method: "PUT" }), {
-    aws: { signQuery: true },
-  });
-  return signed.url;
+  const id = `${SIGNUP_ACCOUNT_PREFIX}${crypto.randomUUID()}`;
+  const otp = generateOtp();
+  const createdAt = nowIso();
+  const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
+  const otpHash = await hashSecret(otp, id);
+
+  await env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?")
+    .bind(normalizedEmail)
+    .run();
+  await env.DB.prepare(
+    `INSERT INTO auth_signup_otps
+      (id, email, full_name, otp_hash, attempts, expires_at, created_at)
+     VALUES (?, ?, ?, ?, 0, ?, ?)`
+  )
+    .bind(id, normalizedEmail, fullName, otpHash, expiresAt, createdAt)
+    .run();
+
+  await sendOtpEmail(env, normalizedEmail, otp);
+  return id;
+}
+
+function limitUploadBody(
+  body: ReadableStream<Uint8Array> | null,
+  expectedSize: number
+) {
+  if (!body) {
+    throw new Response("Missing upload body", { status: 400 });
+  }
+
+  let bytesRead = 0;
+  return body.pipeThrough(
+    new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        bytesRead += chunk.byteLength;
+        if (bytesRead > expectedSize || bytesRead > MAX_FILE_SIZE) {
+          throw new Error("Uploaded object size does not match the upload intent");
+        }
+        controller.enqueue(chunk);
+      },
+    })
+  );
+}
+
+async function createSession(env: Env, userId: string) {
+  const sessionId = crypto.randomUUID();
+  const token = randomToken();
+  const tokenHash = await hashSecret(token, userId);
+  const now = nowIso();
+  const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString();
+  await env.DB.prepare(
+    `INSERT INTO auth_sessions
+      (id, user_id, token_hash, expires_at, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  )
+    .bind(sessionId, userId, tokenHash, expiresAt, now, now)
+    .run();
+
+  return { sessionId, token, accountId: userId, maxAge: SESSION_MAX_AGE_SECONDS };
 }
 
 async function handleAuth(request: Request, env: Env, path: string) {
   if (path === "/auth/send-otp") {
-    const body = await bodyJson<{ email: string; turnstileToken?: string }>(request);
+    const body = await parseBody(request, sendOtpSchema);
     const accountId = await sendEmailOtp(env, body.email, body.turnstileToken);
     return json({ accountId });
   }
 
   if (path === "/auth/create") {
-    const body = await bodyJson<{ fullName: string; email: string }>(request);
-    const email = normalizeEmail(body.email);
-    let user = await getUserByEmail(env, email);
-    if (!user) {
-      const now = nowIso();
-      const id = crypto.randomUUID();
-      await env.DB.prepare(
-        `INSERT INTO user_profiles
-          (id, email, full_name, avatar_url, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-        .bind(id, email, body.fullName, AVATAR_PLACEHOLDER_URL, now, now)
-        .run();
-      user = await getUserById(env, id);
-    }
-    if (!user) throw new Response("Failed to create account", { status: 500 });
-    const accountId = await sendEmailOtp(env, email);
+    const body = await parseBody(request, createAccountSchema);
+    const accountId = await sendSignupOtp(
+      env,
+      body.email,
+      body.fullName,
+      body.turnstileToken
+    );
     if (!accountId) throw new Response("Failed to send an OTP", { status: 500 });
     return json({ accountId });
   }
 
   if (path === "/auth/sign-in") {
-    const body = await bodyJson<{ email: string }>(request);
+    const body = await parseBody(request, signInSchema);
     const email = normalizeEmail(body.email);
     const user = await getUserByEmail(env, email);
     if (!user) return json({ accountId: null, error: "User not found" });
@@ -548,8 +609,56 @@ async function handleAuth(request: Request, env: Env, path: string) {
   }
 
   if (path === "/auth/verify") {
-    const body = await bodyJson<{ accountId: string; password: string }>(request);
+    const body = await parseBody(request, verifyOtpSchema);
     await assertRateLimit(env, body.accountId, "otp-verify", 5, 5 * 60);
+
+    if (body.accountId.startsWith(SIGNUP_ACCOUNT_PREFIX)) {
+      const signupOtp = await env.DB.prepare(
+        `SELECT id, email, full_name, otp_hash, attempts, expires_at
+         FROM auth_signup_otps
+         WHERE id = ?
+         LIMIT 1`
+      )
+        .bind(body.accountId)
+        .first<PendingSignupOtpRow>();
+
+      if (!signupOtp || new Date(signupOtp.expires_at).getTime() < Date.now()) {
+        throw new Response("OTP expired", { status: 400 });
+      }
+      if (signupOtp.attempts >= 3) {
+        throw new Response("Too many invalid attempts", { status: 429 });
+      }
+
+      const hash = await hashSecret(body.password, body.accountId);
+      if (hash !== signupOtp.otp_hash) {
+        await env.DB.prepare("UPDATE auth_signup_otps SET attempts = attempts + 1 WHERE id = ?")
+          .bind(signupOtp.id)
+          .run();
+        throw new Response("Invalid OTP", { status: 400 });
+      }
+
+      let user = await getUserByEmail(env, signupOtp.email);
+      if (!user) {
+        const now = nowIso();
+        const id = crypto.randomUUID();
+        await env.DB.prepare(
+          `INSERT INTO user_profiles
+            (id, email, full_name, avatar_url, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        )
+          .bind(id, signupOtp.email, signupOtp.full_name, AVATAR_PLACEHOLDER_URL, now, now)
+          .run();
+        user = await getUserById(env, id);
+      }
+      if (!user) throw new Response("Failed to create account", { status: 500 });
+
+      const session = await createSession(env, user.id);
+      await env.DB.prepare("DELETE FROM auth_signup_otps WHERE id = ?")
+        .bind(signupOtp.id)
+        .run();
+      return json(session);
+    }
+
     const otp = await env.DB.prepare(
       `SELECT id, otp_hash, attempts, expires_at
        FROM auth_otps
@@ -574,20 +683,11 @@ async function handleAuth(request: Request, env: Env, path: string) {
       throw new Response("Invalid OTP", { status: 400 });
     }
 
-    const sessionId = crypto.randomUUID();
-    const token = randomToken();
-    const tokenHash = await hashSecret(token, body.accountId);
-    const now = nowIso();
-    const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString();
-    await env.DB.batch([
-      env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?").bind(body.accountId),
-      env.DB.prepare(
-        `INSERT INTO auth_sessions
-          (id, user_id, token_hash, expires_at, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      ).bind(sessionId, body.accountId, tokenHash, expiresAt, now, now),
-    ]);
-    return json({ sessionId, token, maxAge: SESSION_MAX_AGE_SECONDS });
+    const session = await createSession(env, body.accountId);
+    await env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?")
+      .bind(body.accountId)
+      .run();
+    return json(session);
   }
 
   if (path === "/auth/current") {
@@ -780,8 +880,13 @@ async function handleUploads(request: Request, env: Env, path: string) {
     )
       .bind(fileId, actor.userId, r2Key, body.name, extension, type, body.size, mimeType, now, now)
       .run();
-    const uploadUrl = await createPresignedUploadUrl(env, r2Key);
-    return json({ fileId, r2Key, uploadUrl, method: "PUT", directToR2: Boolean(uploadUrl) });
+    return json({
+      fileId,
+      r2Key,
+      uploadUrl: null,
+      method: "PUT",
+      directToR2: false,
+    });
   }
 
   if (path === "/uploads/complete") {
@@ -830,11 +935,19 @@ async function handleUploads(request: Request, env: Env, path: string) {
         status: 400,
       });
     }
-    await env.FILES_BUCKET.put(file.r2_key, request.body, {
-      httpMetadata: {
-        contentType: file.mime_type,
-      },
-    });
+    try {
+      await env.FILES_BUCKET.put(file.r2_key, limitUploadBody(request.body, file.size), {
+        httpMetadata: {
+          contentType: file.mime_type,
+        },
+      });
+    } catch (error) {
+      await rejectPendingUpload(env, fileId, file.r2_key);
+      if (error instanceof Response) throw error;
+      throw new Response("Uploaded object size does not match the upload intent", {
+        status: 400,
+      });
+    }
     const object = await env.FILES_BUCKET.head(file.r2_key);
     if (!object || object.size !== file.size || object.size > MAX_FILE_SIZE) {
       await rejectPendingUpload(env, fileId, file.r2_key);

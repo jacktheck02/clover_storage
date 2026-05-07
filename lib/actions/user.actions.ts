@@ -66,13 +66,15 @@ export const verifySecret = async ({
     const result = await backendJson<{
       sessionId: string;
       token: string;
+      accountId?: string;
       maxAge?: number;
     }>("/auth/verify", {
       method: "POST",
       body: JSON.stringify({ accountId, password }),
     });
 
-    (await cookies()).set(getAuthCookieName(), `${accountId}.${result.token}`, {
+    const sessionAccountId = result.accountId || accountId;
+    (await cookies()).set(getAuthCookieName(), `${sessionAccountId}.${result.token}`, {
       path: "/",
       httpOnly: true,
       sameSite: "strict",

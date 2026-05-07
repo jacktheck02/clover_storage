@@ -103,9 +103,6 @@ npx wrangler secret put CLOVER_BACKEND_SECRET
 npx wrangler secret put AUTH_SECRET
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM_EMAIL
-npx wrangler secret put R2_ACCOUNT_ID
-npx wrangler secret put R2_ACCESS_KEY_ID
-npx wrangler secret put R2_SECRET_ACCESS_KEY
 ```
 
 `CLOUDFLARE_API_TOKEN` is only for Wrangler resource/deploy commands. Keep it in your local shell or CI secret store, not in Vercel runtime variables and never in source.
@@ -135,6 +132,7 @@ Open [http://localhost:3000](http://localhost:3000) in your browser to see the a
 ### 6. Build for production
 
 ```bash
+npm run db:migrations:apply:remote
 npm run build
 npm run backend:deploy
 ```
@@ -146,6 +144,8 @@ Create a remote D1 export and upload it to the backup R2 bucket:
 ```bash
 BACKUPS_R2_BUCKET_NAME=clover-backups npm run backup:d1
 ```
+
+The backup and cleanup scripts use the R2 S3 API from your shell or CI. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` for those scripts when needed.
 
 Clean up stale pending upload rows and orphaned R2 objects:
 

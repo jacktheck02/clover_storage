@@ -27,7 +27,6 @@
 		}
 	],
 	"vars": {
-		"R2_BUCKET_NAME": "clover-files",
 		"TURNSTILE_ENABLED": "false"
 	},
 	"observability": {
