@@ -1,125 +1,113 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
-
-import Image from "next/image";
 import { Input } from "@/components/ui/input";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { FileIcon } from "@/components/FileIcon";
+import { getRouteForFile } from "@/components/storage-utils";
 import { getFiles } from "@/lib/actions/file.actions";
-import Thumbnail from "@/components/Thumbnail";
-import FormattedDateTime from "@/components/FormattedDateTime";
+import { formatDateTime } from "@/lib/utils";
+import { MagnifyingGlass, X } from "@phosphor-icons/react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
 import { useDebounce } from "use-debounce";
 
-const Search = () => {
+export function Search() {
   const [query, setQuery] = useState("");
-  const searchParams = useSearchParams();
-  const searchQuery = searchParams.get("query") || "";
   const [results, setResults] = useState<FileDocument[]>([]);
   const [open, setOpen] = useState(false);
-  const router = useRouter();
-  const path = usePathname();
   const [debouncedQuery] = useDebounce(query, 300);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
   useEffect(() => {
-    const fetchFiles = async () => {
-      if (debouncedQuery.length === 0) {
+    const fetchResults = async () => {
+      if (!debouncedQuery.trim()) {
         setResults([]);
         setOpen(false);
         return;
       }
 
-      const files = await getFiles({
-        types: [],
-        searchText: debouncedQuery,
-      });
+      const files = await getFiles({ types: [], searchText: debouncedQuery });
       setResults(files.documents);
       setOpen(true);
     };
 
-    fetchFiles();
-  }, [debouncedQuery, path, router, searchParams]);
+    fetchResults();
+  }, [debouncedQuery]);
 
   useEffect(() => {
-    if (!searchQuery) {
-      // Safe to reset local query when the URL param is cleared.
-      /* eslint-disable-next-line react-hooks/set-state-in-effect */
-      setQuery("");
-    }
-  }, [searchQuery]);
-
-  const handleClickItem = (file: FileDocument) => {
-    // Close dropdown and clear local query/results
+    /* eslint-disable react-hooks/set-state-in-effect */
+    if (!searchParams.get("query")) setQuery("");
     setOpen(false);
     setResults([]);
-    setQuery("");
+    /* eslint-enable react-hooks/set-state-in-effect */
+  }, [pathname, searchParams]);
 
-    router.push(
-      `/${
-        file.type === "video" || file.type === "audio"
-          ? "media"
-          : file.type + "s"
-      }?query=${query}`
-    );
+  const clear = () => {
+    setQuery("");
+    setOpen(false);
+    setResults([]);
   };
 
-  // Close dropdown when the route changes (e.g., after navigating to a result)
-  useEffect(() => {
-    /* eslint-disable-next-line react-hooks/set-state-in-effect */
-    setOpen(false);
-    setResults([]);
-  }, [path]);
-
   return (
-    <div className="search">
-      <div className="search-input-wrapper">
-        <Image
-          src="/assets/icons/search.svg"
-          alt="Search"
-          width={24}
-          height={24}
-        />
+    <div className="relative w-full max-w-[520px]">
+      <div className="flex h-11 items-center gap-3 rounded-full border border-[#d0c4bb] bg-[#f8f2f0] px-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <MagnifyingGlass className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
         <Input
           value={query}
-          placeholder="Search..."
-          className="search-input"
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="Search files..."
+          className="h-auto border-0 bg-transparent p-0 text-sm text-[#1d1b1a] shadow-none placeholder:text-[#7f756d] focus-visible:ring-0 dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
         />
-
-        {open && (
-          <ul className="search-result">
-            {results.length > 0 ? (
-              results.map((file) => (
-                <li
-                  className="flex items-center justify-between"
-                  key={file.$id}
-                  onClick={() => handleClickItem(file)}
-                >
-                  <div className="flex cursor-pointer items-center gap-4">
-                    <Thumbnail
-                      type={file.type}
-                      extension={file.extension}
-                      url={file.url}
-                      className="size-9 min-w-9"
-                    />
-                    <p className="subtitle-2 line-clamp-1 text-light-100 dark:text-white">
-                      {file.name}
-                    </p>
-                  </div>
-
-                  <FormattedDateTime
-                    date={file.$createdAt}
-                    className="caption line-clamp-1 text-light-200 dark:text-light-200"
-                  />
-                </li>
-              ))
-            ) : (
-              <p className="empty-result">No files found</p>
-            )}
-          </ul>
+        {query && (
+          <button
+            type="button"
+            onClick={clear}
+            className="rounded-full p-1 text-[#7f756d] hover:bg-[#ede7e4] dark:hover:bg-[#4d453e]"
+          >
+            <X className="size-4" />
+            <span className="sr-only">Clear search</span>
+          </button>
         )}
       </div>
+
+      {open && (
+        <div className="absolute left-0 top-14 z-50 w-full overflow-hidden rounded-xl border border-[#d0c4bb] bg-white p-2 shadow-[0_12px_30px_rgba(31,27,24,0.12)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+          {results.length > 0 ? (
+            <ul className="max-h-[360px] overflow-auto">
+              {results.map((file) => (
+                <li key={file.$id}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const route = getRouteForFile(file);
+                      clear();
+                      router.push(`${route}?query=${encodeURIComponent(query)}`);
+                    }}
+                    className="flex w-full items-center justify-between gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <FileIcon type={file.type} className="size-9" />
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
+                          {file.name}
+                        </span>
+                        <span className="block text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                          {formatDateTime(file.$createdAt)}
+                        </span>
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="px-3 py-8 text-center text-sm text-[#7f756d] dark:text-[#d0c4bb]">
+              No files found
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
-};
-
-export default Search;
+}

@@ -1,124 +1,84 @@
 "use client";
 
+import { ActionDropdown } from "@/components/ActionDropdown";
+import { FileIcon } from "@/components/FileIcon";
+import { FilePreview } from "@/components/FilePreview";
+import { canPreviewFile } from "@/components/preview-utils";
+import { convertFileSize, formatDateTime } from "@/lib/utils";
 import { useState } from "react";
-import { Thumbnail } from "@/components/Thumbnail";
-import { FormattedDateTime } from "@/components/FormattedDateTime";
-import ActionDropdown from "@/components/ActionDropdown";
-import FilePreview from "@/components/FilePreview";
-import { getFileType } from "@/lib/utils";
 
-interface RecentFilesListProps {
-  files: FileDocument[];
-}
-
-const RecentFilesList: React.FC<RecentFilesListProps> = ({ files }) => {
+export function RecentFilesList({ files }: { files: FileDocument[] }) {
   const [previewFile, setPreviewFile] = useState<FileDocument | null>(null);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-
-  const handleFileClick = (e: React.MouseEvent, file: FileDocument) => {
-    // Don't open preview if clicking on the action dropdown or any Radix dropdown menu
-    const target = e.target as HTMLElement;
-
-    // Check if clicking on dropdown elements, dialogs, or their overlays
-    if (
-      target.closest(".action-dropdown") ||
-      target.closest('[role="menu"]') ||
-      target.closest("[data-radix-dropdown-menu-content]") ||
-      target.closest("[data-radix-dropdown-menu-trigger]") ||
-      target.closest("[data-radix-portal]") ||
-      target.closest('[role="dialog"]') ||
-      target.closest("[data-radix-dialog-overlay]") ||
-      target.closest("[data-radix-dialog-content]") ||
-      // Check if any dialog/modal is currently open
-      document.querySelector('[role="dialog"][data-state="open"]')
-    ) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-
-    const fileType = getFileType(file.name);
-    const { type, extension } = fileType;
-
-    // Determine if file can be previewed
-    const canPreview =
-      type === "image" ||
-      type === "video" ||
-      type === "audio" ||
-      extension === "pdf" ||
-      ["txt", "md", "csv", "zip"].includes(extension);
-
-    if (canPreview) {
-      e.preventDefault();
-      setPreviewFile(file);
-      setIsPreviewOpen(true);
-    }
-  };
 
   if (files.length === 0) {
-    return <p className="empty-list">No files uploaded</p>;
+    return (
+      <p className="rounded-lg bg-[#f8f2f0] px-4 py-8 text-center text-sm text-[#7f756d] dark:bg-[#32302e] dark:text-[#d0c4bb]">
+        No files uploaded
+      </p>
+    );
   }
 
   return (
     <>
-      <ul className="mt-5 flex flex-col gap-5">
-        {files.map((file: FileDocument) => {
-          const fileType = getFileType(file.name);
-          const { type, extension } = fileType;
-          const canPreview =
-            type === "image" ||
-            type === "video" ||
-            type === "audio" ||
-            extension === "pdf" ||
-            ["txt", "md", "csv", "zip"].includes(extension);
+      <ul className="space-y-1">
+        {files.map((file) => {
+          const canPreview = canPreviewFile(file);
 
           return (
-            <a
-              key={file.$id}
-              href={canPreview ? "#" : file.url}
-              onClick={(e) => handleFileClick(e, file)}
-              target={canPreview ? undefined : "_blank"}
-              rel={canPreview ? undefined : "noopener noreferrer"}
-              className="flex items-center gap-3"
-            >
-              <Thumbnail
-                type={file.type}
-                extension={file.extension}
-                url={file.url}
-              />
+            <li key={file.$id}>
+              <a
+                href={canPreview ? "#" : file.url}
+                target={canPreview ? undefined : "_blank"}
+                rel={canPreview ? undefined : "noopener noreferrer"}
+                onClick={(event) => {
+                  const target = event.target as HTMLElement;
+                  if (
+                    target.closest(".file-action-dropdown") ||
+                    target.closest("[data-radix-portal]") ||
+                    document.querySelector('[role="dialog"][data-state="open"]')
+                  ) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    return;
+                  }
 
-              <div className="recent-file-details">
-                <div className="flex flex-col gap-1">
-                  <p className="recent-file-name">{file.name}</p>
-                  <FormattedDateTime
-                    date={file.$createdAt}
-                    className="caption"
-                  />
-                </div>
-                <div
-                  className="action-dropdown"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                  if (canPreview) {
+                    event.preventDefault();
+                    setPreviewFile(file);
+                  }
+                }}
+                className="flex items-center justify-between gap-3 rounded-lg p-2 transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
+              >
+                <span className="flex min-w-0 items-center gap-3">
+                  <FileIcon type={file.type} />
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
+                      {file.name}
+                    </span>
+                    <span className="block text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                      {convertFileSize(file.size)} · {formatDateTime(file.$createdAt)}
+                    </span>
+                  </span>
+                </span>
+                <span
+                  className="file-action-dropdown shrink-0"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
                   }}
                 >
                   <ActionDropdown file={file} />
-                </div>
-              </div>
-            </a>
+                </span>
+              </a>
+            </li>
           );
         })}
       </ul>
       <FilePreview
         file={previewFile}
-        isOpen={isPreviewOpen}
-        onClose={() => {
-          setIsPreviewOpen(false);
-          setPreviewFile(null);
-        }}
+        isOpen={Boolean(previewFile)}
+        onClose={() => setPreviewFile(null)}
       />
     </>
   );
-};
-
-export default RecentFilesList;
+}

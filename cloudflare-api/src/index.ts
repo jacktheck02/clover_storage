@@ -6,7 +6,6 @@ type Env = {
   FILES_BUCKET: R2Bucket;
   BACKUPS_BUCKET: R2Bucket;
   CLOVER_BACKEND_SECRET: string;
-  AUTH_SECRET?: string;
   AUTH_DEBUG_OTP_LOGGING?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;

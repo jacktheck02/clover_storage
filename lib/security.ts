@@ -1,6 +1,12 @@
 import { z } from "zod";
 
-export const APP_PATHS = ["/", "/documents", "/images", "/media", "/others"] as const;
+export const APP_PATHS = [
+  "/",
+  "/documents",
+  "/images",
+  "/media",
+  "/others",
+] as const;
 export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
 export const MAX_JSON_BODY_BYTES = 16 * 1024;
 

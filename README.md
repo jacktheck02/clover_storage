@@ -12,10 +12,9 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 - **React** - UI library
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Accessible component primitives (dialogs, dropdowns, selects, toasts)
-- **shadcn/ui** - Re-usable component library
-- **Recharts** - Data visualization and charts
-- **Lucide React** - Icon library
+- **Radix UI** - Accessible primitives used by local UI components (dialogs, dropdowns, selects, toasts)
+- **shadcn/ui-style components** - Local reusable primitives in `components/ui`
+- **Phosphor Icons** - Icon library
 
 ### Backend & Services
 
@@ -37,6 +36,8 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 - **react-dropzone** - File upload handling
 - **input-otp** - OTP input component
 - **use-debounce** - Debouncing utilities
+- **jszip** - Archive preview support
+- **jsmediatags** - Audio artwork metadata parsing
 - **class-variance-authority** - Component variant management
 - **clsx** & **tailwind-merge** - Conditional styling utilities
 
@@ -100,14 +101,15 @@ For the Cloudflare Worker backend, configure secrets with Wrangler:
 
 ```bash
 npx wrangler secret put CLOVER_BACKEND_SECRET
-npx wrangler secret put AUTH_SECRET
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM_EMAIL
 ```
 
 OTP codes are not logged by default when email delivery is missing. For local-only debugging without Resend, set `AUTH_DEBUG_OTP_LOGGING=true` in your local Worker environment; do not enable it in production.
 
-`CLOUDFLARE_API_TOKEN` is only for Wrangler resource/deploy commands. Keep it in your local shell or CI secret store, not in Vercel runtime variables and never in source.
+If you enable Turnstile, set `TURNSTILE_ENABLED=true` for the Worker and add `TURNSTILE_SECRET_KEY` with Wrangler.
+
+Cloudflare API credentials such as `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_DATABASE_ID` are only for Wrangler, Drizzle Kit, and operations scripts. Keep them in your local shell or CI secret store, not in Vercel runtime variables and never in source.
 
 ### 5. Run development servers
 
@@ -147,13 +149,15 @@ Create a remote D1 export and upload it to the backup R2 bucket:
 BACKUPS_R2_BUCKET_NAME=clover-backups npm run backup:d1
 ```
 
-The backup and cleanup scripts use the R2 S3 API from your shell or CI. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` for those scripts when needed.
+The backup script uses the R2 S3 API from your shell or CI. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` when running it.
 
 Clean up stale pending upload rows and orphaned R2 objects:
 
 ```bash
 npm run cleanup:uploads
 ```
+
+The cleanup script requires `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and `CLOUDFLARE_API_TOKEN`. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME` as well if it should delete orphaned R2 objects.
 
 If you previously enabled direct browser uploads to R2, reapply the checked-in CORS policy after deployment:
 
@@ -184,13 +188,4 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 **Important:** Vercel hosts the frontend only. Deploy the backend separately with `npm run backend:deploy`, then point `CLOVER_BACKEND_URL` at that Worker URL.
 
-### Other Deployment Options
-
-You can also deploy to:
-
-- **Netlify** - Similar process, add environment variables in site settings
-- **Railway** - Supports Next.js out of the box
-- **Docker** - Build and deploy using containers
-- **Self-hosted** - Deploy to your own server
-
-Check out the [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Vercel is the supported frontend deployment target for this project. Other hosts may work, but they need equivalent support for Next.js App Router and the same frontend environment variables.

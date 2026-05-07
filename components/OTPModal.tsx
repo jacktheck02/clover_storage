@@ -1,134 +1,127 @@
 "use client";
 
 import {
-    AlertDialog,
-    AlertDialogAction,
-    AlertDialogContent,
-    AlertDialogDescription,
-    AlertDialogFooter,
-    AlertDialogHeader,
-    AlertDialogTitle,
-  } from "@/components/ui/alert-dialog"  
-
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
-    InputOTP,
-    InputOTPGroup,
-    InputOTPSlot,
-  } from "@/components/ui/input-otp"
-import Image from "next/image";
-import React, { useState } from "react";
-import { Button } from "./ui/button";
-import { useRouter } from "next/navigation";
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { sendEmailOTP, verifySecret } from "@/lib/actions/user.actions";
-  
+import { SpinnerGap, X } from "@phosphor-icons/react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-const OTPModal = ({ accountId, email}: { accountId: string; email: string }) => {
-    const router = useRouter();
-    const [isOpen, setIsOpen] = useState(true);
-    const [password, setPassword] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [otpError, setOtpError] = useState("");
-
-    const handleSubmit = async (e: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>) => {
-        e.preventDefault();
-        if (isLoading) return;
-
-        if (password.length !== 6) {
-            setOtpError("Please enter the full 6-digit OTP.");
-            return;
-        }
-
-        setOtpError("");
-        setIsLoading(true);
-
-        try {
-            const sessionId = await verifySecret({
-                accountId,
-                password,
-            });
-            if(sessionId) router.push("/")
-
-        } catch (error) {
-            console.error("Failed to verify OTP:", error);
-        }
-
-        setIsLoading(false);
-    };
-
-    const handleResendOTP = async () => {
-        await sendEmailOTP({ email });
-    };
-
-  return (
-    <AlertDialog open={isOpen} onOpenChange={setIsOpen}>
-        <AlertDialogContent className="shad-alert-dialog">
-            <AlertDialogHeader className="relative felx justify-center">
-                <AlertDialogTitle className="h2 text-center">
-                    Enter Your OTP
-                    <Image
-                        src="/assets/icons/close-dark.svg"
-                        alt="close"
-                        width={20}
-                        height={20}
-                        onClick={() => setIsOpen(false)}
-                        className="otp-close-button"
-                    />
-                </AlertDialogTitle>
-                <AlertDialogDescription className="subtitle-2 text-center text-light-100">
-                    We have sent a 6-digit OTP to <span className="pl-1 text-brand">{email}</span>. Please enter the OTP below to verify your account.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-
-            <form onSubmit={handleSubmit}>
-                <div className="flex w-full flex-col gap-4">
-                    <InputOTP maxLength={6} value={password} onChange={(value) => {
-                        setPassword(value);
-                        if (otpError && value.length <= 6) setOtpError("");
-                    }}>
-                        <InputOTPGroup className="shad-otp">
-                            <InputOTPSlot index={0} className="shad-otp-slot" />
-                            <InputOTPSlot index={1} className="shad-otp-slot" />
-                            <InputOTPSlot index={2} className="shad-otp-slot" />
-                            <InputOTPSlot index={3} className="shad-otp-slot" />
-                            <InputOTPSlot index={4} className="shad-otp-slot" />
-                            <InputOTPSlot index={5} className="shad-otp-slot" />
-                        </InputOTPGroup>
-                    </InputOTP>
-                    {otpError && <p className="text-center text-sm text-red-500">{otpError}</p>}
-                    <AlertDialogFooter>
-                        <AlertDialogAction
-                            className="shad-submit-btn h-12"
-                            type="submit"
-                        >
-                            Submit
-                            {isLoading && (
-                                <Image
-                                    src="/assets/icons/loader.svg"
-                                    alt="loader"
-                                    width={24}
-                                    height={24}
-                                    className="ml-2 animate-spin"
-                                />
-                            )}
-                        </AlertDialogAction>
-
-                        <div className="subtitle-2 mt-2 text-center text-light-100">
-                            Didn&apos;t receive the OTP?
-                            <Button
-                                type="button"
-                                variant="link"
-                                className="pl-1 text-brand"
-                                onClick={handleResendOTP}
-                            >
-                                Click to resend
-                            </Button>
-                        </div>
-                    </AlertDialogFooter>
-                </div>
-            </form>
-        </AlertDialogContent>
-    </AlertDialog>
-  )
+interface OTPModalProps {
+  accountId: string;
+  email: string;
+  onClose: () => void;
 }
 
-export default OTPModal
+export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+  const router = useRouter();
+
+  const handleSubmit = async (
+    event: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
+  ) => {
+    event.preventDefault();
+    if (loading) return;
+    if (password.length !== 6) {
+      setOtpError("Please enter the full 6-digit OTP.");
+      return;
+    }
+
+    setOtpError("");
+    setLoading(true);
+    try {
+      const session = await verifySecret({ accountId, password });
+      if (session) router.push("/");
+    } catch (error) {
+      console.error(error);
+      setOtpError("Invalid or expired OTP. Please try again.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <AlertDialog open onOpenChange={(open) => !open && onClose()}>
+      <AlertDialogContent className="max-w-md rounded-xl border-[#d0c4bb] bg-white p-6 dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-4 top-4 rounded-full p-1 text-[#7f756d] hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
+        >
+          <X className="size-4" />
+          <span className="sr-only">Close OTP dialog</span>
+        </button>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="text-center text-2xl font-medium text-[#1d1b1a] dark:text-[#f5efed]">
+            Enter your OTP
+          </AlertDialogTitle>
+          <AlertDialogDescription className="text-center text-sm leading-6 text-[#4d453e] dark:text-[#d0c4bb]">
+            We sent a 6-digit OTP to{" "}
+            <span className="font-semibold text-[#147e68] dark:text-[#5bd7bf]">
+              {email}
+            </span>
+            .
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+          <InputOTP
+            maxLength={6}
+            value={password}
+            onChange={(value) => {
+              setPassword(value);
+              if (otpError) setOtpError("");
+            }}
+          >
+            <InputOTPGroup className="flex w-full justify-between gap-2">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <InputOTPSlot
+                  key={index}
+                  index={index}
+                  className="size-12 rounded-lg border-2 border-[#d0c4bb] text-xl font-semibold text-[#6b5c4c] dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#d7c3b0] md:size-14"
+                />
+              ))}
+            </InputOTPGroup>
+          </InputOTP>
+          {otpError && <p className="text-center text-sm text-[#ba1a1a]">{otpError}</p>}
+
+          <AlertDialogFooter className="flex-col gap-3 sm:flex-col">
+            <Button
+              type="submit"
+              className="h-12 w-full rounded-lg bg-[#147e68] font-semibold text-white hover:bg-[#147e68]/90"
+              disabled={loading}
+            >
+              Submit
+              {loading && <SpinnerGap className="ml-2 size-4 animate-spin" />}
+            </Button>
+            <div className="text-center text-sm text-[#4d453e] dark:text-[#d0c4bb]">
+              Didn&apos;t receive the OTP?
+              <Button
+                type="button"
+                variant="link"
+                className="px-1 font-semibold text-[#147e68] dark:text-[#5bd7bf]"
+                onClick={() => sendEmailOTP({ email })}
+              >
+                Resend
+              </Button>
+            </div>
+          </AlertDialogFooter>
+        </form>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}

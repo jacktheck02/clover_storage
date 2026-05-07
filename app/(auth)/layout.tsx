@@ -1,60 +1,35 @@
-import React from "react";
+import { Logo } from "@/components/Logo";
 import Image from "next/image";
-import ThemeToggle from "@/components/ThemeToggle";
+import Link from "next/link";
 
 const Layout = ({ children }: { children: React.ReactNode }) => {
   return (
-    <div className="flex min-h-screen">
-      <section className="hidden w-1/2 items-center justify-center bg-brand dark:bg-[#8b7355] p-10 lg:flex xl:w-2/5 relative transition-colors duration-300">
-        <div className="absolute top-4 right-4 lg:hidden">
-          <ThemeToggle />
-        </div>
-        <div className="flex max-h-[800px] max-w-[430px] flex-col justify-center space-y-12">
-          <Image
-            src="/assets/icons/logo.svg"
-            alt="logo"
-            width={350}
-            height={150}
-            className="h-auto w-auto"
-            priority
-          />
-
-          <div className="space-y-5 text-white">
-            <h1 className="h1">Manage your files easily</h1>
-            <p className="body-1">
-              This is a place where you can store all your documents.
-            </p>
-          </div>
-          <Image
-            src="/assets/images/illustration.png"
-            alt="Files"
-            width={342}
-            height={342}
-            className="transition-all hover:rotate-2 hover:scale-105"
-          />
-        </div>
+    <main className="flex min-h-screen bg-[#fef8f5] font-inter text-[#1d1b1a] dark:bg-[#32302e] dark:text-[#f5efed]">
+      <section className="relative flex w-full flex-col items-center justify-center px-6 py-12 sm:px-12 lg:w-1/2 lg:px-20">
+        <Link href="/sign-in" className="mb-8 flex items-center justify-center">
+          <Logo size={72} className="size-[72px]" />
+          <span className="sr-only">Clover</span>
+        </Link>
+        <div className="w-full max-w-[440px]">{children}</div>
+        <footer className="mt-12 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+          <span>Privacy Policy</span>
+          <span>Terms of Service</span>
+          <span>Contact Support</span>
+        </footer>
       </section>
 
-      <section className="flex flex-1 flex-col items-center bg-white dark:bg-dark-100 p-4 py-10 lg:justify-center lg:p-10 lg:py-0 relative transition-colors duration-300">
-        <div className="absolute top-4 right-4">
-          <ThemeToggle />
-        </div>
-
-        <div className="mb-16 lg:hidden">
-          <Image
-            src="/assets/icons/logo-full-clover.svg"
-            alt="logo"
-            width={350}
-            height={150}
-            className="h-auto w-[200px] lg:w-[250px]"
-            style={{ height: "auto" }}
-            priority
-          />
-        </div>
-
-        {children}
+      <section className="relative hidden min-h-screen w-1/2 overflow-hidden border-l border-[#d0c4bb]/40 bg-[#f8f2f0] dark:border-[#7f756d]/40 dark:bg-[#1d1b1a] lg:block">
+        <Image
+          src="/assets/images/auth-secure-cloud.png"
+          alt="Secure private cloud storage"
+          fill
+          priority
+          className="object-cover"
+        />
+        <div className="absolute inset-0 bg-[#6b5c4c]/10 mix-blend-multiply" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#fef8f5]/80 via-transparent to-transparent dark:from-[#32302e]/80" />
       </section>
-    </div>
+    </main>
   );
 };
 
