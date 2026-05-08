@@ -23,7 +23,7 @@ export function Sidebar({ user }: SidebarProps) {
   }, [router]);
 
   return (
-    <aside className="hidden h-full w-[264px] shrink-0 overflow-hidden border-r border-[#d0c4bb] bg-[#f8f2f0] px-4 py-5 text-[#1d1b1a] dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] lg:flex lg:flex-col">
+    <aside className="hidden h-full w-[264px] shrink-0 overflow-hidden border-r border-[#d0c4bb] bg-[#f8f2f0] px-4 pb-3 pt-5 text-[#1d1b1a] dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] lg:flex lg:flex-col">
       <Link href="/" className="mb-8 flex items-center gap-3 px-2">
         <Logo size={40} className="size-10 shrink-0" />
         <span className="text-[28px] font-semibold tracking-[-0.02em] text-[#6b5c4c] dark:text-[#d7c3b0]">

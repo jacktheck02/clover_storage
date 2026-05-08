@@ -64,6 +64,7 @@ export function getRouteForFile(file: Pick<FileDocument, "type">) {
 
 export function getPageTitle(type: string) {
   const titles: Record<string, string> = {
+    all: "All Files",
     documents: "Documents",
     images: "Images",
     media: "Media",

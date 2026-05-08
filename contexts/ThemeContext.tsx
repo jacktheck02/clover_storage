@@ -19,35 +19,29 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 const THEME_STORAGE_KEY = "theme";
 const THEME_CHANGE_EVENT = "clover-theme-change";
-const DEFAULT_THEME: Theme = "light";
+const DEFAULT_THEME: Theme = "dark";
 
 const isTheme = (value: string | null): value is Theme =>
   value === "light" || value === "dark";
-
-const getSystemTheme = (): Theme =>
-  window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 
 const getStoredTheme = (): Theme => {
   if (typeof window === "undefined") return DEFAULT_THEME;
 
   const savedTheme = localStorage.getItem(THEME_STORAGE_KEY);
-  return isTheme(savedTheme) ? savedTheme : getSystemTheme();
+  return isTheme(savedTheme) ? savedTheme : DEFAULT_THEME;
 };
 
 const subscribeToThemeChanges = (onStoreChange: () => void) => {
   if (typeof window === "undefined") return () => {};
 
-  const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
   const handleChange = () => onStoreChange();
 
   window.addEventListener(THEME_CHANGE_EVENT, handleChange);
   window.addEventListener("storage", handleChange);
-  mediaQuery.addEventListener("change", handleChange);
 
   return () => {
     window.removeEventListener(THEME_CHANGE_EVENT, handleChange);
     window.removeEventListener("storage", handleChange);
-    mediaQuery.removeEventListener("change", handleChange);
   };
 };
 
@@ -82,4 +76,3 @@ export function useTheme() {
   }
   return context;
 }
-

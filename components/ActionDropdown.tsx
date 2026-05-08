@@ -1,6 +1,7 @@
 "use client";
 
 import { FileIcon } from "@/components/FileIcon";
+import { FileThumbnail } from "@/components/FileThumbnail";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -214,7 +215,7 @@ function FileDetails({ file }: { file: FileDocument }) {
   return (
     <div className="space-y-4">
       <div className="flex gap-3 rounded-lg bg-[#f8f2f0] p-3 dark:bg-[#32302e]">
-        <FileIcon type={file.type} />
+        <FileThumbnail file={file} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{file.name}</p>
           <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
@@ -248,7 +249,7 @@ function ShareInput({
   return (
     <div className="space-y-4">
       <div className="flex gap-3 rounded-lg bg-[#f8f2f0] p-3 dark:bg-[#32302e]">
-        <FileIcon type={file.type} />
+        <FileThumbnail file={file} />
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold">{file.name}</p>
           <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">

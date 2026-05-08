@@ -1,8 +1,8 @@
 "use client";
 
 import { ActionDropdown } from "@/components/ActionDropdown";
-import { FileIcon } from "@/components/FileIcon";
 import { FilePreview } from "@/components/FilePreview";
+import { FileThumbnail } from "@/components/FileThumbnail";
 import { canPreviewFile } from "@/components/preview-utils";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import { useState } from "react";
@@ -50,7 +50,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                 className="flex items-center justify-between gap-3 rounded-lg p-2 transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
               >
                 <span className="flex min-w-0 items-center gap-3">
-                  <FileIcon type={file.type} />
+                  <FileThumbnail file={file} />
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
                       {file.name}

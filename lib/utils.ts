@@ -124,6 +124,8 @@ export const constructDownloadUrl = (fileId: string) => {
 
 export const getFileTypesParams = (type: string) => {
   switch (type) {
+    case "all":
+      return [];
     case "documents":
       return ["document"];
     case "images":

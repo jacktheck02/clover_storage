@@ -1,7 +1,7 @@
 "use client";
 
 import { Input } from "@/components/ui/input";
-import { FileIcon } from "@/components/FileIcon";
+import { FileThumbnail } from "@/components/FileThumbnail";
 import { getRouteForFile } from "@/components/storage-utils";
 import { getFiles } from "@/lib/actions/file.actions";
 import { formatDateTime } from "@/lib/utils";
@@ -87,7 +87,7 @@ export function Search() {
                     className="flex w-full items-center justify-between gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
                   >
                     <span className="flex min-w-0 items-center gap-3">
-                      <FileIcon type={file.type} className="size-9" />
+                      <FileThumbnail file={file} className="size-9" sizes="36px" />
                       <span className="min-w-0">
                         <span className="block truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
                           {file.name}

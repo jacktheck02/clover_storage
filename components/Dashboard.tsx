@@ -146,7 +146,7 @@ export function Dashboard({ files, totalSpace }: DashboardProps) {
             Recent Files
           </h2>
           <Link
-            href="/documents"
+            href="/all"
             className="text-xs font-bold uppercase tracking-[0.05em] text-[#147e68] hover:underline dark:text-[#5bd7bf]"
           >
             View all

@@ -26,7 +26,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" data-scroll-behavior="smooth" suppressHydrationWarning>
+    <html
+      lang="en"
+      className="dark"
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body className={`${poppins.variable} ${inter.variable} font-poppins antialiased`}>
         <ThemeProvider>
           {children}

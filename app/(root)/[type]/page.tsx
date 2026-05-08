@@ -4,7 +4,7 @@ import { getFileTypesParams } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/actions/user.actions";
 import { notFound, redirect } from "next/navigation";
 
-const allowedTypes = ["documents", "images", "media", "others"];
+const allowedTypes = ["all", "documents", "images", "media", "others"];
 
 const Page = async ({ searchParams, params }: SearchParamProps) => {
   const type = ((await params)?.type as string) || "";
