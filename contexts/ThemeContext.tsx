@@ -17,7 +17,7 @@ interface ThemeContextType {
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
-const THEME_STORAGE_KEY = "theme";
+const THEME_STORAGE_KEY = "clover-theme";
 const THEME_CHANGE_EVENT = "clover-theme-change";
 const DEFAULT_THEME: Theme = "dark";
 

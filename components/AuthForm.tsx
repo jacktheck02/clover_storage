@@ -95,7 +95,10 @@ export function AuthForm({ type }: { type: FormType }) {
   return (
     <>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <form
+          onSubmit={form.handleSubmit(onSubmit)}
+          className="space-y-6"
+        >
           <div className="text-center">
             <h1 className="text-5xl font-semibold tracking-[-0.02em] text-[#6b5c4c] dark:text-[#d7c3b0]">
               Clover
@@ -116,10 +119,10 @@ export function AuthForm({ type }: { type: FormType }) {
                   </FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d]" />
+                      <User className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
                       <Input
                         placeholder="Enter your full name"
-                        className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] focus-visible:border-[#147e68] focus-visible:ring-[#147e68]/20 dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#f5efed]"
+                        className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#147e68] focus-visible:ring-[#147e68]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
                         {...field}
                       />
                     </div>
@@ -140,11 +143,11 @@ export function AuthForm({ type }: { type: FormType }) {
                 </FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <EnvelopeSimple className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d]" />
+                    <EnvelopeSimple className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
                     <Input
                       placeholder="you@example.com"
                       type="email"
-                      className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] focus-visible:border-[#147e68] focus-visible:ring-[#147e68]/20 dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#f5efed]"
+                      className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#147e68] focus-visible:ring-[#147e68]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
                       {...field}
                     />
                   </div>
@@ -168,7 +171,7 @@ export function AuthForm({ type }: { type: FormType }) {
           </Button>
 
           {errorMessage && (
-            <p className="rounded-lg bg-[#ffdad6] px-4 py-3 text-center text-sm text-[#93000a]">
+            <p className="rounded-lg bg-[#ffdad6] px-4 py-3 text-center text-sm text-[#93000a] dark:bg-[#4f1010] dark:text-[#ffdad6]">
               {errorMessage}
             </p>
           )}

@@ -5,6 +5,7 @@ import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { cn } from "@/lib/utils";
 import { MusicNotes } from "@phosphor-icons/react";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 interface FileThumbnailProps {
   file: FileDocument;
@@ -14,6 +15,8 @@ interface FileThumbnailProps {
   sizes?: string;
 }
 
+const videoThumbnailCache = new Map<string, string | null>();
+
 export function FileThumbnail({
   file,
   className,
@@ -21,7 +24,85 @@ export function FileThumbnail({
   imageClassName,
   sizes = "56px",
 }: FileThumbnailProps) {
+  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
   const { artworkUrl } = useAudioArtwork(file.url, file.type === "audio");
+
+  useEffect(() => {
+    if (file.type !== "video") {
+      return;
+    }
+
+    if (videoThumbnailCache.has(file.url)) {
+      const frame = requestAnimationFrame(() => {
+        setVideoThumbnail(videoThumbnailCache.get(file.url) ?? null);
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+
+    let cancelled = false;
+    let captured = false;
+    const video = document.createElement("video");
+
+    const setCachedThumbnail = (thumbnail: string | null) => {
+      videoThumbnailCache.set(file.url, thumbnail);
+      if (!cancelled) setVideoThumbnail(thumbnail);
+    };
+
+    const captureFrame = () => {
+      if (captured || !video.videoWidth || !video.videoHeight) return;
+      captured = true;
+
+      try {
+        const canvas = document.createElement("canvas");
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const context = canvas.getContext("2d");
+        if (!context) {
+          setCachedThumbnail(null);
+          return;
+        }
+
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        setCachedThumbnail(canvas.toDataURL("image/jpeg", 0.82));
+      } catch {
+        setCachedThumbnail(null);
+      }
+    };
+
+    const handleLoadedMetadata = () => {
+      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      const targetTime = duration > 0 ? Math.min(0.75, Math.max(0.1, duration * 0.1)) : 0;
+
+      try {
+        if (targetTime > 0) video.currentTime = targetTime;
+        else captureFrame();
+      } catch {
+        captureFrame();
+      }
+    };
+
+    const handleError = () => setCachedThumbnail(null);
+
+    video.preload = "metadata";
+    video.muted = true;
+    video.playsInline = true;
+    video.addEventListener("loadedmetadata", handleLoadedMetadata);
+    video.addEventListener("seeked", captureFrame);
+    video.addEventListener("loadeddata", captureFrame);
+    video.addEventListener("error", handleError);
+    video.src = file.url;
+    video.load();
+
+    return () => {
+      cancelled = true;
+      video.removeEventListener("loadedmetadata", handleLoadedMetadata);
+      video.removeEventListener("seeked", captureFrame);
+      video.removeEventListener("loadeddata", captureFrame);
+      video.removeEventListener("error", handleError);
+      video.removeAttribute("src");
+      video.load();
+    };
+  }, [file.type, file.url]);
 
   if (file.type === "image") {
     return (
@@ -80,6 +161,26 @@ export function FileThumbnail({
             <span className="h-1 w-0.5 rounded-full bg-current opacity-60" />
           </span>
         </div>
+      </div>
+    );
+  }
+
+  if (file.type === "video" && videoThumbnail) {
+    return (
+      <div
+        className={cn(
+          "relative size-10 shrink-0 overflow-hidden rounded-lg bg-[#f8f2f0] dark:bg-[#32302e]",
+          className
+        )}
+      >
+        <Image
+          src={videoThumbnail}
+          alt={`${file.name} preview frame`}
+          fill
+          sizes={sizes}
+          className={cn("object-cover", imageClassName)}
+          unoptimized
+        />
       </div>
     );
   }

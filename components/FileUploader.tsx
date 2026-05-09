@@ -5,7 +5,7 @@ import { FileIcon } from "@/components/FileIcon";
 import { MAX_FILE_SIZE } from "@/constants";
 import { useToast } from "@/hooks/use-toast";
 import { cn, convertFileSize, getFileType } from "@/lib/utils";
-import { UploadSimple, X } from "@phosphor-icons/react";
+import { SpinnerGap, UploadSimple, X } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useCallback, useState } from "react";
@@ -125,7 +125,7 @@ export function FileUploader({ className }: FileUploaderProps) {
 
       {files.length > 0 &&
         createPortal(
-          <div className="fixed bottom-6 right-6 z-[100] w-[min(420px,calc(100vw-32px))] rounded-xl border border-[#d0c4bb] bg-white p-4 shadow-[0_16px_40px_rgba(31,27,24,0.16)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+          <div className="fixed bottom-6 right-6 z-[100] w-[min(420px,calc(100vw-32px))] animate-in fade-in-0 slide-in-from-bottom-3 zoom-in-95 rounded-xl border border-[#d0c4bb] bg-white p-4 shadow-[0_16px_40px_rgba(31,27,24,0.16)] duration-200 motion-reduce:animate-none dark:border-[#7f756d] dark:bg-[#1d1b1a]">
             <h4 className="mb-3 text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
               Uploading
             </h4>
@@ -144,11 +144,13 @@ export function FileUploader({ className }: FileUploaderProps) {
                         <p className="truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
                           {file.name}
                         </p>
-                        <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                          {convertFileSize(file.size)}
-                        </p>
-                      </div>
+                      <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                        {convertFileSize(file.size)}
+                      </p>
                     </div>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <SpinnerGap className="size-4 animate-spin text-[#147e68] motion-reduce:animate-none dark:text-[#5bd7bf]" />
                     <button
                       type="button"
                       onClick={(event) => {
@@ -162,9 +164,10 @@ export function FileUploader({ className }: FileUploaderProps) {
                       <X className="size-4" />
                       <span className="sr-only">Remove {file.name}</span>
                     </button>
-                  </li>
-                );
-              })}
+                  </div>
+                </li>
+              );
+            })}
             </ul>
           </div>,
           document.body

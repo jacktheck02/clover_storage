@@ -3,6 +3,7 @@ import "./globals.css";
 import { Inter, Poppins } from "next/font/google";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { Toaster } from "@/components/ui/toaster";
+import Script from "next/script";
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -33,6 +34,16 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className={`${poppins.variable} ${inter.variable} font-poppins antialiased`}>
+        <Script id="theme-init" strategy="beforeInteractive">
+          {`
+            try {
+              var theme = localStorage.getItem("clover-theme");
+              document.documentElement.classList.toggle("dark", theme !== "light");
+            } catch (_) {
+              document.documentElement.classList.add("dark");
+            }
+          `}
+        </Script>
         <ThemeProvider>
           {children}
           <Toaster />
