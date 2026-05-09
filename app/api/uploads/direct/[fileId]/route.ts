@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/actions/user.actions";
+import { getCurrentAuthenticatedUser } from "@/lib/actions/user.actions";
 import { backendRaw } from "@/lib/backend/client";
 import {
   fileIdParamSchema,
@@ -11,8 +11,8 @@ export async function PUT(
   { params }: { params: Promise<{ fileId: string }> }
 ) {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
+    const auth = await getCurrentAuthenticatedUser();
+    if (!auth) {
       return Response.json({ error: "Unauthorized" }, { status: 401 });
     }
 
@@ -22,18 +22,27 @@ export async function PUT(
       return Response.json({ error: "Invalid file id" }, { status: 400 });
     }
 
-    const fileBytes = await request.arrayBuffer();
-    if (fileBytes.byteLength > MAX_FILE_SIZE_BYTES) {
+    const contentLengthHeader = request.headers.get("content-length");
+    const contentLength = Number(contentLengthHeader || 0);
+    if (!contentLengthHeader || !Number.isFinite(contentLength) || contentLength <= 0) {
+      return Response.json({ error: "Content-Length is required" }, { status: 411 });
+    }
+    if (contentLength > MAX_FILE_SIZE_BYTES) {
       return Response.json({ error: "File too large" }, { status: 413 });
+    }
+
+    const fileBytes = await request.arrayBuffer();
+    if (fileBytes.byteLength !== contentLength) {
+      return Response.json({ error: "Upload size changed while reading" }, { status: 400 });
     }
 
     const response = await backendRaw(`/uploads/direct/${fileId.data}`, {
       method: "PUT",
       headers: {
-        "content-length": String(fileBytes.byteLength),
+        "content-length": String(contentLength),
         "content-type":
           request.headers.get("content-type") || "application/octet-stream",
-        ...getActorHeaders(currentUser),
+        ...getActorHeaders(auth.user, auth.session),
       },
       body: fileBytes,
     });

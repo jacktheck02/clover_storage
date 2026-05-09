@@ -6,6 +6,7 @@ type Env = {
   FILES_BUCKET: R2Bucket;
   BACKUPS_BUCKET: R2Bucket;
   CLOVER_BACKEND_SECRET: string;
+  AUTH_HASH_PEPPER?: string;
   AUTH_DEBUG_OTP_LOGGING?: string;
   RESEND_API_KEY?: string;
   RESEND_FROM_EMAIL?: string;
@@ -21,7 +22,6 @@ const MAX_JSON_BODY_SIZE = 16 * 1024;
 const USER_STORAGE_LIMIT = 128 * 1024 * 1024;
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OTP_MAX_AGE_SECONDS = 5 * 60;
-const SIGNUP_ACCOUNT_PREFIX = "signup:";
 const AVATAR_PLACEHOLDER_URL =
   "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_960_720.png";
 const encoder = new TextEncoder();
@@ -117,6 +117,7 @@ const sendOtpSchema = z.object({
 });
 const signInSchema = z.object({
   email: emailSchema,
+  turnstileToken: z.string().optional(),
 });
 const verifyOtpSchema = z.object({
   accountId: z.string().trim().min(1).max(80),
@@ -193,12 +194,28 @@ function generateOtp() {
   return value.toString().padStart(6, "0");
 }
 
-async function hashSecret(secret: string, salt: string) {
+function getSecretPepper(env: Env) {
+  return env.AUTH_HASH_PEPPER || env.CLOVER_BACKEND_SECRET;
+}
+
+async function hashSecret(env: Env, secret: string, salt: string) {
   const buffer = await crypto.subtle.digest(
     "SHA-256",
-    encoder.encode(`${salt}:${secret}`)
+    encoder.encode(`${getSecretPepper(env)}:${salt}:${secret}`)
   );
   return toHex(buffer);
+}
+
+async function deriveOpaqueUuid(env: Env, purpose: string, value: string) {
+  const hex = await hashSecret(env, value, purpose);
+  const variant = ((Number.parseInt(hex[16], 16) & 0x3) | 0x8).toString(16);
+  return [
+    hex.slice(0, 8),
+    hex.slice(8, 12),
+    `4${hex.slice(13, 16)}`,
+    `${variant}${hex.slice(17, 20)}`,
+    hex.slice(20, 32),
+  ].join("-");
 }
 
 async function readJsonBody(request: Request) {
@@ -261,10 +278,30 @@ function assertAuthorized(request: Request, env: Env) {
   }
 }
 
-function getActor(request: Request) {
+async function getActor(request: Request, env: Env) {
+  const session = request.headers.get("x-clover-session") || "";
+  const [userId, token] = session.split(".");
+  if (!userId || !token) {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+
+  const tokenHash = await hashSecret(env, token, userId);
+  const user = await env.DB.prepare(
+    `SELECT u.id, u.email
+     FROM auth_sessions s
+     INNER JOIN user_profiles u ON u.id = s.user_id
+     WHERE s.user_id = ? AND s.token_hash = ? AND s.expires_at > ?
+     LIMIT 1`
+  )
+    .bind(userId, tokenHash, nowIso())
+    .first<{ id: string; email: string }>();
+  if (!user) {
+    throw new Response("Unauthorized", { status: 401 });
+  }
+
   const result = actorSchema.safeParse({
-    userId: request.headers.get("x-clover-user-id") || "",
-    email: request.headers.get("x-clover-user-email") || "",
+    userId: user.id,
+    email: user.email,
   });
   if (!result.success) {
     throw new Response("Unauthorized", { status: 401 });
@@ -323,17 +360,6 @@ async function getReservedStorage(env: Env, userId: string) {
     `SELECT COALESCE(SUM(size), 0) AS used
      FROM files
      WHERE owner_id = ? AND status IN ('pending', 'active')`
-  )
-    .bind(userId)
-    .first<{ used: number }>();
-  return result?.used || 0;
-}
-
-async function getActiveStorage(env: Env, userId: string) {
-  const result = await env.DB.prepare(
-    `SELECT COALESCE(SUM(size), 0) AS used
-     FROM files
-     WHERE owner_id = ? AND status = 'active'`
   )
     .bind(userId)
     .first<{ used: number }>();
@@ -422,7 +448,6 @@ function mapFile(file: FileRow) {
     },
     accountId: file.owner_id,
     users: file.shared_users ? file.shared_users.split(",").filter(Boolean) : [],
-    r2Key: file.r2_key,
     mimeType: file.mime_type,
   };
 }
@@ -523,14 +548,14 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   if (!verified) throw new Response("Failed bot check", { status: 400 });
 
   const user = await getUserByEmail(env, normalizedEmail);
-  if (!user) return null;
-
   await assertRateLimit(env, normalizedEmail, "otp-send", 3, 60);
+
+  if (!user) return deriveOpaqueUuid(env, "signin-missing-account", normalizedEmail);
 
   const otp = generateOtp();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
-  const otpHash = await hashSecret(otp, user.id);
+  const otpHash = await hashSecret(env, otp, user.id);
 
   await env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?")
     .bind(user.id)
@@ -564,11 +589,11 @@ async function sendSignupOtp(
 
   await assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60);
 
-  const id = `${SIGNUP_ACCOUNT_PREFIX}${crypto.randomUUID()}`;
+  const id = await deriveOpaqueUuid(env, "pending-signup", normalizedEmail);
   const otp = generateOtp();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
-  const otpHash = await hashSecret(otp, id);
+  const otpHash = await hashSecret(env, otp, id);
 
   await env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?")
     .bind(normalizedEmail)
@@ -588,7 +613,7 @@ async function sendSignupOtp(
 async function createSession(env: Env, userId: string) {
   const sessionId = crypto.randomUUID();
   const token = randomToken();
-  const tokenHash = await hashSecret(token, userId);
+  const tokenHash = await hashSecret(env, token, userId);
   const now = nowIso();
   const expiresAt = new Date(Date.now() + SESSION_MAX_AGE_SECONDS * 1000).toISOString();
   await env.DB.prepare(
@@ -624,34 +649,32 @@ async function handleAuth(request: Request, env: Env, path: string) {
   if (path === "/auth/sign-in") {
     const body = await parseBody(request, signInSchema);
     const email = normalizeEmail(body.email);
-    const user = await getUserByEmail(env, email);
-    if (!user) return json({ accountId: null, error: "User not found" });
-    await sendEmailOtp(env, email);
-    return json({ accountId: user.id });
+    const accountId = await sendEmailOtp(env, email, body.turnstileToken);
+    return json({ accountId });
   }
 
   if (path === "/auth/verify") {
     const body = await parseBody(request, verifyOtpSchema);
     await assertRateLimit(env, body.accountId, "otp-verify", 5, 5 * 60);
 
-    if (body.accountId.startsWith(SIGNUP_ACCOUNT_PREFIX)) {
-      const signupOtp = await env.DB.prepare(
-        `SELECT id, email, full_name, otp_hash, attempts, expires_at
-         FROM auth_signup_otps
-         WHERE id = ?
-         LIMIT 1`
-      )
-        .bind(body.accountId)
-        .first<PendingSignupOtpRow>();
+    const signupOtp = await env.DB.prepare(
+      `SELECT id, email, full_name, otp_hash, attempts, expires_at
+       FROM auth_signup_otps
+       WHERE id = ?
+       LIMIT 1`
+    )
+      .bind(body.accountId)
+      .first<PendingSignupOtpRow>();
 
-      if (!signupOtp || new Date(signupOtp.expires_at).getTime() < Date.now()) {
+    if (signupOtp) {
+      if (new Date(signupOtp.expires_at).getTime() < Date.now()) {
         throw new Response("OTP expired", { status: 400 });
       }
       if (signupOtp.attempts >= 3) {
         throw new Response("Too many invalid attempts", { status: 429 });
       }
 
-      const hash = await hashSecret(body.password, body.accountId);
+      const hash = await hashSecret(env, body.password, body.accountId);
       if (hash !== signupOtp.otp_hash) {
         await env.DB.prepare("UPDATE auth_signup_otps SET attempts = attempts + 1 WHERE id = ?")
           .bind(signupOtp.id)
@@ -697,7 +720,7 @@ async function handleAuth(request: Request, env: Env, path: string) {
     if (otp.attempts >= 3) {
       throw new Response("Too many invalid attempts", { status: 429 });
     }
-    const hash = await hashSecret(body.password, body.accountId);
+    const hash = await hashSecret(env, body.password, body.accountId);
     if (hash !== otp.otp_hash) {
       await env.DB.prepare("UPDATE auth_otps SET attempts = attempts + 1 WHERE id = ?")
         .bind(otp.id)
@@ -716,7 +739,7 @@ async function handleAuth(request: Request, env: Env, path: string) {
     const body = await bodyJson<{ session?: string }>(request);
     const [userId, token] = (body.session || "").split(".");
     if (!userId || !token) return json({ user: null });
-    const tokenHash = await hashSecret(token, userId);
+    const tokenHash = await hashSecret(env, token, userId);
     const user = await env.DB.prepare(
       `SELECT u.id, u.email, u.full_name, u.avatar_url, u.created_at, u.updated_at
        FROM auth_sessions s
@@ -733,7 +756,7 @@ async function handleAuth(request: Request, env: Env, path: string) {
     const body = await bodyJson<{ session?: string }>(request);
     const [userId, token] = (body.session || "").split(".");
     if (userId && token) {
-      const tokenHash = await hashSecret(token, userId);
+      const tokenHash = await hashSecret(env, token, userId);
       await env.DB.prepare("DELETE FROM auth_sessions WHERE user_id = ? AND token_hash = ?")
         .bind(userId, tokenHash)
         .run();
@@ -746,7 +769,7 @@ async function handleAuth(request: Request, env: Env, path: string) {
 
 async function handleFiles(request: Request, env: Env, path: string) {
   if (path === "/files/list") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const body = await parseBody(request, fileListSchema);
     const conditions = [
       "f.status = 'active'",
@@ -804,7 +827,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/rename") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const body = await parseBody(request, renameFileSchema);
     await env.DB.prepare(
       `UPDATE files SET name = ?, updated_at = ? WHERE id = ? AND owner_id = ?`
@@ -815,7 +838,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/share") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const body = await parseBody(request, shareFileSchema);
     const ownedFile = await env.DB.prepare("SELECT id FROM files WHERE id = ? AND owner_id = ?")
       .bind(body.fileId, actor.userId)
@@ -841,7 +864,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/delete") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const body = await parseBody(request, fileMutationSchema);
     const file = await env.DB.prepare("SELECT r2_key FROM files WHERE id = ? AND owner_id = ?")
       .bind(body.fileId, actor.userId)
@@ -853,7 +876,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/total-space") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const rows = await env.DB.prepare(
       "SELECT type, size, updated_at FROM files WHERE owner_id = ? AND status = 'active'"
     )
@@ -883,7 +906,7 @@ async function handleFiles(request: Request, env: Env, path: string) {
 
 async function handleUploads(request: Request, env: Env, path: string) {
   if (path === "/uploads/intent") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const body = await parseBody(request, uploadIntentSchema);
     await assertRateLimit(env, actor.userId, "upload-intent", 30, 60);
     const reservedStorage = await getReservedStorage(env, actor.userId);
@@ -904,7 +927,6 @@ async function handleUploads(request: Request, env: Env, path: string) {
       .run();
     return json({
       fileId,
-      r2Key,
       uploadUrl: null,
       method: "PUT",
       directToR2: false,
@@ -912,7 +934,7 @@ async function handleUploads(request: Request, env: Env, path: string) {
   }
 
   if (path === "/uploads/complete") {
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const body = await parseBody(request, fileMutationSchema);
     const pending = await env.DB.prepare(
       `SELECT r2_key, size FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
@@ -928,8 +950,8 @@ async function handleUploads(request: Request, env: Env, path: string) {
         status: 400,
       });
     }
-    const activeStorage = await getActiveStorage(env, actor.userId);
-    if (activeStorage + object.size > USER_STORAGE_LIMIT) {
+    const reservedStorage = await getReservedStorage(env, actor.userId);
+    if (reservedStorage > USER_STORAGE_LIMIT) {
       await rejectPendingUpload(env, body.fileId, pending.r2_key);
       throw new Response("Storage quota exceeded", { status: 413 });
     }
@@ -946,15 +968,19 @@ async function handleUploads(request: Request, env: Env, path: string) {
     const fileIdResult = fileIdSchema.safeParse(directMatch[1]);
     if (!fileIdResult.success) throw new Response("Invalid file id", { status: 400 });
     const fileId = fileIdResult.data;
-    const actor = getActor(request);
+    const actor = await getActor(request, env);
     const file = await env.DB.prepare(
       `SELECT r2_key, mime_type, size FROM files WHERE id = ? AND owner_id = ? AND status = 'pending'`
     )
       .bind(fileId, actor.userId)
       .first<{ r2_key: string; mime_type: string; size: number }>();
     if (!file) throw new Response("Upload not found", { status: 404 });
-    const contentLength = Number(request.headers.get("content-length") || 0);
-    if (contentLength && contentLength !== file.size) {
+    const contentLengthHeader = request.headers.get("content-length");
+    const contentLength = Number(contentLengthHeader || 0);
+    if (!contentLengthHeader || !Number.isFinite(contentLength) || contentLength <= 0) {
+      throw new Response("Content-Length is required", { status: 411 });
+    }
+    if (contentLength !== file.size) {
       throw new Response(
         `Uploaded object size does not match the upload intent: received ${contentLength} bytes, expected ${file.size} bytes`,
         { status: 400 }
@@ -1002,7 +1028,7 @@ async function handleFileObject(request: Request, env: Env, path: string) {
   const fileIdResult = fileIdSchema.safeParse(rawFileId);
   if (!fileIdResult.success) throw new Response("Invalid file id", { status: 400 });
   const fileId = fileIdResult.data;
-  const actor = getActor(request);
+  const actor = await getActor(request, env);
   const file = await env.DB.prepare(
     `SELECT f.r2_key, f.name, f.mime_type
      FROM files f

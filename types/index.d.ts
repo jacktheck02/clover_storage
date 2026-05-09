@@ -26,7 +26,6 @@ declare interface FileDocument {
   };
   accountId: string;
   users: string[];
-  r2Key?: string;
   mimeType?: string;
 }
 

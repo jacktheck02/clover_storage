@@ -21,7 +21,11 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     const isDevelopment = process.env.NODE_ENV !== "production";
-    const scriptSrc = ["'self'", "'unsafe-inline'"];
+    const scriptSrc = [
+      "'self'",
+      "'unsafe-inline'",
+      "https://challenges.cloudflare.com",
+    ];
     if (isDevelopment) scriptSrc.push("'unsafe-eval'");
 
     const securityHeaders = [
@@ -35,7 +39,8 @@ const nextConfig: NextConfig = {
           "form-action 'self'",
           "img-src 'self' data: blob: https://cdn.pixabay.com https://img.freepik.com",
           "media-src 'self' blob:",
-          "connect-src 'self'",
+          "connect-src 'self' https://challenges.cloudflare.com",
+          "frame-src https://challenges.cloudflare.com",
           `script-src ${scriptSrc.join(" ")}`,
           "style-src 'self' 'unsafe-inline'",
           "worker-src 'self' blob:",

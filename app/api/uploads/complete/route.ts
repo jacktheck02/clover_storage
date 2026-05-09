@@ -1,4 +1,4 @@
-import { getCurrentUser } from "@/lib/actions/user.actions";
+import { getCurrentAuthenticatedUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
 import { revalidatePath } from "next/cache";
 import {
@@ -9,8 +9,8 @@ import {
 } from "@/lib/security";
 
 export async function POST(request: Request) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
+  const auth = await getCurrentAuthenticatedUser();
+  if (!auth) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
 
   await backendJson("/uploads/complete", {
     method: "POST",
-    headers: getActorHeaders(currentUser),
+    headers: getActorHeaders(auth.user, auth.session),
     body: JSON.stringify({
       fileId: result.data.fileId,
     }),

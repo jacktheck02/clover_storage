@@ -1,5 +1,5 @@
 import { MAX_FILE_SIZE } from "@/constants";
-import { getCurrentUser } from "@/lib/actions/user.actions";
+import { getCurrentAuthenticatedUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
 import {
   getActorHeaders,
@@ -8,8 +8,8 @@ import {
 } from "@/lib/security";
 
 export async function POST(request: Request) {
-  const currentUser = await getCurrentUser();
-  if (!currentUser) {
+  const auth = await getCurrentAuthenticatedUser();
+  if (!auth) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -32,13 +32,12 @@ export async function POST(request: Request) {
 
   const intent = await backendJson<{
     fileId: string;
-    r2Key: string;
     uploadUrl: string | null;
     method: "PUT";
     directToR2: boolean;
   }>("/uploads/intent", {
     method: "POST",
-    headers: getActorHeaders(currentUser),
+    headers: getActorHeaders(auth.user, auth.session),
     body: JSON.stringify({
       name: result.data.name,
       size: result.data.size,

@@ -93,6 +93,7 @@ For local Vercel/Next development, create a `.env.local` file in the root direct
 AUTH_COOKIE_NAME=clover-session
 CLOVER_BACKEND_URL=http://localhost:8787
 CLOVER_BACKEND_SECRET=replace_with_the_same_secret_used_by_the_worker
+NEXT_PUBLIC_TURNSTILE_SITE_KEY=optional_turnstile_site_key
 ```
 
 Set the same `AUTH_COOKIE_NAME`, `CLOVER_BACKEND_URL`, and `CLOVER_BACKEND_SECRET` in Vercel project environment variables before pushing to a Vercel-deployed branch.
@@ -101,13 +102,14 @@ For the Cloudflare Worker backend, configure secrets with Wrangler:
 
 ```bash
 npx wrangler secret put CLOVER_BACKEND_SECRET
+npx wrangler secret put AUTH_HASH_PEPPER
 npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM_EMAIL
 ```
 
 OTP codes are not logged by default when email delivery is missing. For local-only debugging without Resend, set `AUTH_DEBUG_OTP_LOGGING=true` in your local Worker environment; do not enable it in production.
 
-If you enable Turnstile, set `TURNSTILE_ENABLED=true` for the Worker and add `TURNSTILE_SECRET_KEY` with Wrangler.
+If you enable Turnstile, set `TURNSTILE_ENABLED=true` for the Worker, add `TURNSTILE_SECRET_KEY` with Wrangler, and set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` for the Next app.
 
 Cloudflare API credentials such as `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_DATABASE_ID` are only for Wrangler, Drizzle Kit, and operations scripts. Keep them in your local shell or CI secret store, not in Vercel runtime variables and never in source.
 

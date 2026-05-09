@@ -14,6 +14,7 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { isTurnstileConfigured, Turnstile } from "@/components/Turnstile";
 import { sendEmailOTP, verifySecret } from "@/lib/actions/user.actions";
 import { SpinnerGap, X } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
@@ -29,6 +30,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [otpError, setOtpError] = useState("");
+  const [resendTurnstileToken, setResendTurnstileToken] = useState("");
   const router = useRouter();
 
   const handleSubmit = async (
@@ -114,11 +116,21 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
                 type="button"
                 variant="link"
                 className="px-1 font-semibold text-[#056e7d] dark:text-[#5bd7bf]"
-                onClick={() => sendEmailOTP({ email })}
+                onClick={() => {
+                  if (isTurnstileConfigured() && !resendTurnstileToken) {
+                    setOtpError("Please complete the security check before resending.");
+                    return;
+                  }
+                  sendEmailOTP({ email, turnstileToken: resendTurnstileToken });
+                }}
               >
                 Resend
               </Button>
             </div>
+            <Turnstile
+              onToken={setResendTurnstileToken}
+              onReset={() => setResendTurnstileToken("")}
+            />
           </AlertDialogFooter>
         </form>
       </AlertDialogContent>

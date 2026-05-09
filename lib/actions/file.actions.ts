@@ -2,7 +2,7 @@
 
 import { parseStringify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
-import { getCurrentUser } from "@/lib/actions/user.actions";
+import { getCurrentAuthenticatedUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
 import {
   deleteFileSchema,
@@ -20,13 +20,13 @@ const handleError = (error: unknown, message: string) => {
 
 export const getFiles = async (input: GetFilesProps = {}) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) throw new Error("User not found");
+    const auth = await getCurrentAuthenticatedUser();
+    if (!auth) throw new Error("User not found");
     const params = getFilesSchema.parse(input);
 
     const files = await backendJson<FilesResponse>("/files/list", {
       method: "POST",
-      headers: getActorHeaders(currentUser),
+      headers: getActorHeaders(auth.user, auth.session),
       body: JSON.stringify({
         types: params.types,
         searchText: params.searchText,
@@ -48,13 +48,13 @@ export const renameFile = async ({
   path,
 }: RenameFileProps) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) throw new Error("User is not authenticated.");
+    const auth = await getCurrentAuthenticatedUser();
+    if (!auth) throw new Error("User is not authenticated.");
     const params = renameFileSchema.parse({ fileId, name, extension, path });
 
     await backendJson("/files/rename", {
       method: "POST",
-      headers: getActorHeaders(currentUser),
+      headers: getActorHeaders(auth.user, auth.session),
       body: JSON.stringify({
         fileId: params.fileId,
         name: params.name,
@@ -76,12 +76,12 @@ export const updateFileUsers = async ({
   path,
 }: UpdateFileUsersProps) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) throw new Error("User is not authenticated.");
+    const auth = await getCurrentAuthenticatedUser();
+    if (!auth) throw new Error("User is not authenticated.");
     const params = updateFileUsersSchema.parse({ fileId, emails, path });
     await backendJson("/files/share", {
       method: "POST",
-      headers: getActorHeaders(currentUser),
+      headers: getActorHeaders(auth.user, auth.session),
       body: JSON.stringify({
         fileId: params.fileId,
         emails: params.emails,
@@ -101,13 +101,13 @@ export const deleteFile = async ({
   path,
 }: DeleteFileProps) => {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) throw new Error("User is not authenticated.");
+    const auth = await getCurrentAuthenticatedUser();
+    if (!auth) throw new Error("User is not authenticated.");
     const params = deleteFileSchema.parse({ fileId, path });
 
     await backendJson("/files/delete", {
       method: "POST",
-      headers: getActorHeaders(currentUser),
+      headers: getActorHeaders(auth.user, auth.session),
       body: JSON.stringify({
         fileId: params.fileId,
       }),
@@ -124,12 +124,12 @@ export const deleteFile = async ({
 // ============================== TOTAL FILE SPACE USED
 export async function getTotalSpaceUsed() {
   try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) throw new Error("User is not authenticated.");
+    const auth = await getCurrentAuthenticatedUser();
+    if (!auth) throw new Error("User is not authenticated.");
 
     const totalSpace = await backendJson("/files/total-space", {
       method: "POST",
-      headers: getActorHeaders(currentUser),
+      headers: getActorHeaders(auth.user, auth.session),
       body: JSON.stringify({}),
     });
 

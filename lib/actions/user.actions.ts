@@ -41,15 +41,18 @@ export const sendEmailOTP = async ({
 export const createAccount = async ({
   fullName,
   email,
+  turnstileToken,
 }: {
   fullName: string;
   email: string;
+  turnstileToken?: string;
 }) => {
   const result = await backendJson<{ accountId: string }>("/auth/create", {
     method: "POST",
     body: JSON.stringify({
       fullName,
       email: normalizeEmail(email),
+      turnstileToken,
     }),
   });
   return parseStringify(result);
@@ -108,6 +111,26 @@ export const getCurrentUser = async () => {
   }
 };
 
+export const getCurrentUserSession = async () => {
+  const sessionCookie = (await cookies()).get(getAuthCookieName());
+  return sessionCookie?.value || null;
+};
+
+export const getCurrentAuthenticatedUser = async () => {
+  const session = await getCurrentUserSession();
+  if (!session) return null;
+
+  const result = await backendJson<{ user: UserDocument | null }>(
+    "/auth/current",
+    {
+      method: "POST",
+      body: JSON.stringify({ session }),
+    }
+  );
+
+  return result.user ? { user: parseStringify(result.user) as UserDocument, session } : null;
+};
+
 export const signOutUser = async () => {
   try {
     const cookieStore = await cookies();
@@ -126,14 +149,20 @@ export const signOutUser = async () => {
   }
 };
 
-export const signInUser = async ({ email }: { email: string }) => {
+export const signInUser = async ({
+  email,
+  turnstileToken,
+}: {
+  email: string;
+  turnstileToken?: string;
+}) => {
   try {
     const result = await backendJson<{
       accountId: string | null;
       error?: string;
     }>("/auth/sign-in", {
       method: "POST",
-      body: JSON.stringify({ email: normalizeEmail(email) }),
+      body: JSON.stringify({ email: normalizeEmail(email), turnstileToken }),
     });
     return parseStringify(result);
   } catch (error) {

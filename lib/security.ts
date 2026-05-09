@@ -73,10 +73,14 @@ export const deleteFileSchema = z.object({
   path: z.string().max(100).optional(),
 });
 
-export function getActorHeaders(user: Pick<UserDocument, "$id" | "email">) {
+export function getActorHeaders(
+  user: Pick<UserDocument, "$id" | "email">,
+  session?: string
+) {
   return {
     "x-clover-user-id": user.$id,
     "x-clover-user-email": user.email,
+    ...(session ? { "x-clover-session": session } : {}),
   };
 }
 

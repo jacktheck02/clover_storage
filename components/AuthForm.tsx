@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { OTPModal } from "@/components/OTPModal";
+import { isTurnstileConfigured, Turnstile } from "@/components/Turnstile";
 import { useToast } from "@/hooks/use-toast";
 import { createAccount, signInUser } from "@/lib/actions/user.actions";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -39,7 +40,9 @@ const authSchema = (type: FormType) =>
 export function AuthForm({ type }: { type: FormType }) {
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [infoMessage, setInfoMessage] = useState("");
   const [accountId, setAccountId] = useState<string | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState("");
   const { toast } = useToast();
   const formSchema = authSchema(type);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -50,36 +53,36 @@ export function AuthForm({ type }: { type: FormType }) {
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
     setLoading(true);
     setErrorMessage("");
+    setInfoMessage("");
     try {
+      if (isTurnstileConfigured() && !turnstileToken) {
+        setErrorMessage("Please complete the security check.");
+        return;
+      }
+
       const result =
         type === "sign-up"
           ? await createAccount({
               fullName: values.fullName || "",
               email: values.email,
+              turnstileToken,
             })
-          : await signInUser({ email: values.email });
+          : await signInUser({ email: values.email, turnstileToken });
 
       if (result.error) {
         setErrorMessage(result.error);
-        if (result.error === "User not found") {
-          toast({
-            title: "Account not found",
-            description: (
-              <span>
-                No account exists for this email.{" "}
-                <Link href="/sign-up" className="font-semibold underline">
-                  Sign up instead
-                </Link>
-                .
-              </span>
-            ),
-            variant: "destructive",
-          });
-        }
         return;
       }
 
-      setAccountId(result.accountId);
+      if (result.accountId) {
+        setAccountId(result.accountId);
+      } else {
+        setInfoMessage("If an account exists for that email, we sent a code.");
+        toast({
+          title: "Check your email",
+          description: "If an account exists for that email, we sent a code.",
+        });
+      }
     } catch (error) {
       console.error(error);
       setErrorMessage(
@@ -170,9 +173,19 @@ export function AuthForm({ type }: { type: FormType }) {
             )}
           </Button>
 
+          <Turnstile
+            onToken={setTurnstileToken}
+            onReset={() => setTurnstileToken("")}
+          />
+
           {errorMessage && (
             <p className="rounded-lg bg-[#ffdad6] px-4 py-3 text-center text-sm text-[#93000a] dark:bg-[#4f1010] dark:text-[#ffdad6]">
               {errorMessage}
+            </p>
+          )}
+          {infoMessage && (
+            <p className="rounded-lg bg-[#d8f2f0] px-4 py-3 text-center text-sm text-[#244d4b] dark:bg-[#123a3d] dark:text-[#d8f2f0]">
+              {infoMessage}
             </p>
           )}
 
