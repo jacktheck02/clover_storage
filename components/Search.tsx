@@ -72,7 +72,11 @@ export function Search() {
       </div>
 
       {open && (
-        <div className="absolute left-0 top-14 z-50 w-full overflow-hidden rounded-xl border border-[#d0c4bb] bg-white p-2 shadow-[0_12px_30px_rgba(31,27,24,0.12)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <div
+          className={`absolute left-0 top-14 z-[80] overflow-hidden rounded-xl border border-[#d0c4bb] bg-[#fffaf7] p-2 shadow-[0_18px_45px_rgba(31,27,24,0.18)] dark:border-[#7f756d] dark:bg-[#1d1b1a] ${
+            results.length > 0 ? "w-full" : "w-[min(360px,100%)]"
+          }`}
+        >
           {results.length > 0 ? (
             <ul className="max-h-[360px] overflow-auto">
               {results.map((file) => (
@@ -102,7 +106,7 @@ export function Search() {
               ))}
             </ul>
           ) : (
-            <p className="px-3 py-8 text-center text-sm text-[#7f756d] dark:text-[#d0c4bb]">
+            <p className="px-3 py-5 text-center text-sm font-medium text-[#7f756d] dark:text-[#d0c4bb]">
               No files found
             </p>
           )}

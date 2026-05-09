@@ -1,4 +1,5 @@
 import Image from "next/image";
+import { cn } from "@/lib/utils";
 
 interface LogoProps {
   size?: number;
@@ -12,7 +13,10 @@ export function Logo({ size = 40, className }: LogoProps) {
       alt="Clover logo"
       width={size}
       height={size}
-      className={className}
+      className={cn(
+        "transition-transform duration-150 ease-out hover:scale-105 active:scale-100 motion-reduce:transition-none motion-reduce:hover:scale-100",
+        className
+      )}
       priority
     />
   );

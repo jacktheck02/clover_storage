@@ -11,6 +11,8 @@ import { FileIcon } from "@/components/FileIcon";
 import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { convertFileSize, getFileType } from "@/lib/utils";
 import {
+  ArrowClockwise,
+  ArrowCounterClockwise,
   FileArchive,
   FileText,
   Pause,
@@ -134,6 +136,16 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     setIsPlaying(true);
   };
 
+  const seekAudioBy = (seconds: number) => {
+    if (!audioRef.current) return;
+    const nextTime = Math.min(
+      Math.max(audioRef.current.currentTime + seconds, 0),
+      duration || audioRef.current.duration || 0
+    );
+    audioRef.current.currentTime = nextTime;
+    setCurrentTime(nextTime);
+  };
+
   const renderLoading = (label: string) => (
     <div className="flex h-[360px] items-center justify-center gap-2 text-sm text-[#7f756d] dark:text-[#d0c4bb]">
       <SpinnerGap className="size-4 animate-spin" />
@@ -169,8 +181,8 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
     if (type === "audio") {
       return (
-        <div className="flex min-h-[300px] items-center justify-center bg-[#f8f2f0] p-6 dark:bg-[#32302e]">
-          <div className="w-full max-w-2xl rounded-xl border border-[#d0c4bb] bg-white p-5 dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <div className="flex items-center justify-center bg-[#f8f2f0] p-4 dark:bg-[#32302e] sm:p-5">
+          <div className="w-full rounded-xl border border-[#d0c4bb] bg-white p-4 dark:border-[#7f756d] dark:bg-[#1d1b1a] sm:p-5">
             <audio
               ref={audioRef}
               src={file.url}
@@ -219,7 +231,18 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
               className="w-full accent-[#056e7d]"
               aria-label="Audio progress"
             />
-            <div className="mt-5 flex justify-center">
+            <div className="mt-5 flex items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => seekAudioBy(-10)}
+                className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
+                aria-label="Go back 10 seconds"
+              >
+                <ArrowCounterClockwise className="size-7" />
+                <span className="absolute text-[10px] font-bold leading-none">
+                  10
+                </span>
+              </button>
               <button
                 type="button"
                 onClick={toggleAudioPlayback}
@@ -227,6 +250,17 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
                 aria-label={isPlaying ? "Pause audio" : "Play audio"}
               >
                 {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+              </button>
+              <button
+                type="button"
+                onClick={() => seekAudioBy(10)}
+                className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
+                aria-label="Skip ahead 10 seconds"
+              >
+                <ArrowClockwise className="size-7" />
+                <span className="absolute text-[10px] font-bold leading-none">
+                  10
+                </span>
               </button>
             </div>
           </div>
@@ -313,7 +347,13 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="flex max-h-[90vh] w-[min(960px,calc(100vw-32px))] max-w-none flex-col overflow-hidden rounded-xl border-[#d0c4bb] bg-white p-0 dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+      <DialogContent
+        className={`flex max-h-[90vh] max-w-none flex-col overflow-hidden rounded-xl border-[#d0c4bb] bg-white p-0 dark:border-[#7f756d] dark:bg-[#1d1b1a] ${
+          type === "audio"
+            ? "w-[min(520px,calc(100vw-32px))]"
+            : "w-[min(960px,calc(100vw-32px))]"
+        }`}
+      >
         <DialogHeader className="border-b border-[#e7e1df] px-5 py-4 text-left dark:border-[#4d453e]">
           <DialogTitle className="truncate pr-8 text-lg font-medium text-[#1d1b1a] dark:text-[#f5efed]">
             {file.name}
