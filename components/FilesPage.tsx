@@ -35,13 +35,13 @@ export function FilesPage({ type, files }: FilesPageProps) {
       </section>
 
       {files.total > 0 ? (
-        <section className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {files.documents.map((file) => (
             <FileCard key={file.$id} file={file} />
           ))}
         </section>
       ) : (
-        <div className="rounded-xl border border-dashed border-[#d0c4bb] bg-white p-12 text-center dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <div className="py-12 text-center">
           <p className="text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
             No files uploaded
           </p>

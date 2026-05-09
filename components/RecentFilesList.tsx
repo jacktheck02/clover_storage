@@ -12,7 +12,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
 
   if (files.length === 0) {
     return (
-      <p className="rounded-lg bg-[#f8f2f0] px-4 py-8 text-center text-sm text-[#7f756d] dark:bg-[#32302e] dark:text-[#d0c4bb]">
+      <p className="py-8 text-center text-sm text-[#7f756d] dark:text-[#d0c4bb]">
         No files uploaded
       </p>
     );
@@ -20,7 +20,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
 
   return (
     <>
-      <ul className="space-y-1">
+      <ul className="grid max-w-5xl grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {files.map((file) => {
           const canPreview = canPreviewFile(file);
 
@@ -47,7 +47,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     setPreviewFile(file);
                   }
                 }}
-                className="flex items-center justify-between gap-3 rounded-lg p-2 transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
+                className="flex min-h-16 items-center justify-between gap-3 rounded-lg bg-[#f8f2f0]/55 px-3 py-2.5 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/45 dark:hover:bg-[#1d1b1a]"
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <FileThumbnail file={file} />
@@ -55,7 +55,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     <span className="block truncate text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
                       {file.name}
                     </span>
-                    <span className="block text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                    <span className="block truncate text-xs text-[#7f756d] dark:text-[#d0c4bb]">
                       {convertFileSize(file.size)} · {formatDateTime(file.$createdAt)}
                     </span>
                   </span>

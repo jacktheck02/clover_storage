@@ -37,7 +37,7 @@ export function FileCard({ file }: { file: FileDocument }) {
         onClick={handleClick}
         target={canPreview ? undefined : "_blank"}
         rel={canPreview ? undefined : "noopener noreferrer"}
-        className="group flex min-h-[210px] flex-col justify-between rounded-xl border border-[#e7e1df] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_15px_-3px_rgba(0,0,0,0.03)] transition-transform hover:scale-[0.98] dark:border-[#7f756d] dark:bg-[#1d1b1a]"
+        className="group flex min-h-[172px] flex-col justify-between rounded-lg bg-[#f8f2f0]/65 p-3 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/55 dark:hover:bg-[#1d1b1a]"
       >
         <div className="flex items-start justify-between">
           <FileThumbnail
@@ -60,7 +60,7 @@ export function FileCard({ file }: { file: FileDocument }) {
               {formatDateTime(file.$createdAt)}
             </p>
           </div>
-          <div className="flex items-center justify-between border-t border-[#e7e1df] pt-3 text-xs text-[#4d453e] dark:border-[#4d453e] dark:text-[#d0c4bb]">
+          <div className="flex items-center justify-between pt-2 text-xs text-[#4d453e] dark:text-[#d0c4bb]">
             <span>{convertFileSize(file.size)}</span>
             <span className="max-w-[55%] truncate">By {file.owner.fullName}</span>
           </div>

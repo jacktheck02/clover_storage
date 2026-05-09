@@ -1,7 +1,7 @@
 import { FileIcon } from "@/components/FileIcon";
 import { RecentFilesList } from "@/components/RecentFilesList";
 import { StorageUsageRing } from "@/components/StorageUsageRing";
-import { STORAGE_LIMIT_BYTES, fileTypeMeta } from "@/components/storage-utils";
+import { STORAGE_LIMIT_BYTES } from "@/components/storage-utils";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
 
@@ -65,60 +65,78 @@ export function Dashboard({ files, totalSpace }: DashboardProps) {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-xl border border-[#e7e1df] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_15px_-3px_rgba(0,0,0,0.03)] dark:border-[#7f756d] dark:bg-[#1d1b1a] md:flex md:items-center md:gap-10 md:p-6">
-        <div className="relative mx-auto size-48 shrink-0 md:mx-0">
-          <StorageUsageRing percentage={usedPercentage} />
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-3xl font-semibold tracking-[-0.02em] text-[#6b5c4c] dark:text-[#f4dfcb]">
-              {convertFileSize(totalSpace.used)}
-            </span>
-            <span className="mt-1 text-xs text-[#4d453e] dark:text-[#d0c4bb]">
-              of {convertFileSize(STORAGE_LIMIT_BYTES)} used
-            </span>
-          </div>
-        </div>
-
-        <div className="mt-6 min-w-0 flex-1 text-center md:mt-0 md:text-left">
-          <h1 className="text-3xl font-semibold tracking-[-0.02em] text-[#1d1b1a] dark:text-[#f5efed]">
-            Storage Overview
-          </h1>
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#4d453e] dark:text-[#d0c4bb]">
-            Your files are organized by type with recent uploads kept close at
-            hand.
-          </p>
-        </div>
-      </section>
-
-      <section className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
-        {categories.map((category) => {
-          const meta = fileTypeMeta[category.key];
-          return (
-            <Link
-              key={category.title}
-              href={category.href}
-              className="rounded-xl border border-[#e7e1df] bg-white p-4 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_15px_-3px_rgba(0,0,0,0.03)] transition-transform hover:scale-[0.98] dark:border-[#7f756d] dark:bg-[#1d1b1a]"
-            >
-              <div className="mb-5 flex items-start justify-between">
-                <FileIcon type={category.key} />
-                <span className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                  {meta.label}
+      <section className="py-2">
+        <div className="grid gap-6 xl:grid-cols-[280px_1fr] xl:items-center">
+          <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:text-left xl:flex-col xl:text-center">
+            <div className="relative size-44 shrink-0">
+              <StorageUsageRing percentage={usedPercentage} />
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <span className="text-3xl font-semibold tracking-[-0.02em] text-[#6b5c4c] dark:text-[#f4dfcb]">
+                  {convertFileSize(totalSpace.used)}
+                </span>
+                <span className="mt-1 text-xs text-[#4d453e] dark:text-[#d0c4bb]">
+                  of {convertFileSize(STORAGE_LIMIT_BYTES)}
                 </span>
               </div>
-              <h2 className="text-xl font-medium text-[#1d1b1a] dark:text-[#f5efed]">
-                {category.title}
-              </h2>
-              <p className="mt-1 text-2xl font-semibold text-[#6b5c4c] dark:text-[#f4dfcb]">
-                {convertFileSize(category.size || 0)}
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-3xl font-semibold tracking-[-0.02em] text-[#1d1b1a] dark:text-[#f5efed]">
+                Storage Overview
+              </h1>
+              <p className="mt-2 text-sm text-[#4d453e] dark:text-[#d0c4bb]">
+                {usedPercentage}% of storage used
               </p>
-              <p className="mt-4 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                Latest updated: {formatDateTime(category.latestDate)}
-              </p>
-            </Link>
-          );
-        })}
+            </div>
+          </div>
+
+          <div className="grid gap-x-6 gap-y-1 md:grid-cols-2">
+            {categories.map((category) => {
+              const categoryPercentage =
+                category.size > 0
+                  ? Math.max(
+                      Math.min((category.size / STORAGE_LIMIT_BYTES) * 100, 100),
+                      2
+                    )
+                  : 0;
+
+              return (
+                <Link
+                  key={category.title}
+                  href={category.href}
+                  className="group -mx-2 rounded-lg px-2 py-3 transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#1d1b1a]"
+                >
+                  <div className="flex items-center gap-3">
+                    <FileIcon type={category.key} />
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <h2 className="truncate text-base font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
+                            {category.title}
+                          </h2>
+                          <p className="mt-0.5 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                            Latest updated: {formatDateTime(category.latestDate)}
+                          </p>
+                        </div>
+                        <p className="shrink-0 text-right text-lg font-semibold text-[#6b5c4c] dark:text-[#f4dfcb]">
+                          {convertFileSize(category.size || 0)}
+                        </p>
+                      </div>
+                      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#ede7e4] dark:bg-[#4d453e]">
+                        <div
+                          className="h-full rounded-full bg-[#056e7d] transition-all duration-300 group-hover:bg-[#045b67]"
+                          style={{ width: `${categoryPercentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
-      <section className="rounded-xl border border-[#e7e1df] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_15px_-3px_rgba(0,0,0,0.03)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+      <section className="border-t border-[#d0c4bb] pt-5 dark:border-[#7f756d]">
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-2xl font-medium tracking-[-0.01em] text-[#1d1b1a] dark:text-[#f5efed]">
             Recent Files
