@@ -197,7 +197,7 @@ export function ActionDropdown({ file }: { file: FileDocument }) {
                   type="button"
                   onClick={handleAction}
                   disabled={loading}
-                  className="rounded-lg bg-[#147e68] text-white hover:bg-[#147e68]/90"
+                  className="rounded-lg bg-[#056e7d] text-white hover:bg-[#056e7d]/90"
                 >
                   <span className="capitalize">{action.value}</span>
                   {loading && <SpinnerGap className="ml-2 size-4 animate-spin" />}

@@ -115,7 +115,7 @@ export function FileUploader({ className }: FileUploaderProps) {
       <Button
         type="button"
         className={cn(
-          "h-11 gap-2 rounded-lg bg-[#147e68] px-4 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#147e68]/90 active:scale-[0.98]",
+          "h-11 gap-2 rounded-lg bg-[#056e7d] px-4 text-sm font-semibold text-white shadow-none transition-all hover:bg-[#056e7d]/90 active:scale-[0.98]",
           className
         )}
       >
@@ -150,7 +150,7 @@ export function FileUploader({ className }: FileUploaderProps) {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <SpinnerGap className="size-4 animate-spin text-[#147e68] motion-reduce:animate-none dark:text-[#5bd7bf]" />
+                    <SpinnerGap className="size-4 animate-spin text-[#056e7d] motion-reduce:animate-none dark:text-[#5bd7bf]" />
                     <button
                       type="button"
                       onClick={(event) => {

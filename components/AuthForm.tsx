@@ -122,7 +122,7 @@ export function AuthForm({ type }: { type: FormType }) {
                       <User className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
                       <Input
                         placeholder="Enter your full name"
-                        className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#147e68] focus-visible:ring-[#147e68]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
+                        className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#056e7d] focus-visible:ring-[#056e7d]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
                         {...field}
                       />
                     </div>
@@ -147,7 +147,7 @@ export function AuthForm({ type }: { type: FormType }) {
                     <Input
                       placeholder="you@example.com"
                       type="email"
-                      className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#147e68] focus-visible:ring-[#147e68]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
+                      className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#056e7d] focus-visible:ring-[#056e7d]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
                       {...field}
                     />
                   </div>
@@ -160,7 +160,7 @@ export function AuthForm({ type }: { type: FormType }) {
           <Button
             type="submit"
             disabled={loading}
-            className="h-[52px] w-full rounded-lg bg-[#147e68] py-3.5 text-base font-semibold text-white hover:bg-[#147e68]/90 active:scale-[0.98]"
+            className="h-[52px] w-full rounded-lg bg-[#056e7d] py-3.5 text-base font-semibold text-white hover:bg-[#056e7d]/90 active:scale-[0.98]"
           >
             {type === "sign-in" ? "Send OTP" : "Create account"}
             {loading ? (
@@ -180,7 +180,7 @@ export function AuthForm({ type }: { type: FormType }) {
             {type === "sign-in" ? "Don't have an account?" : "Already have an account?"}{" "}
             <Link
               href={type === "sign-in" ? "/sign-up" : "/sign-in"}
-              className="font-bold text-[#147e68] hover:underline dark:text-[#5bd7bf]"
+              className="font-bold text-[#056e7d] hover:underline dark:text-[#5bd7bf]"
             >
               {type === "sign-in" ? "Sign up for an account" : "Sign in"}
             </Link>

@@ -34,13 +34,13 @@ export const fileTypeMeta = {
     label: "Media",
     url: "/media",
     icon: FilmSlate,
-    tone: "bg-[#147e68]/15 text-[#147e68] dark:bg-[#147e68] dark:text-[#5bd7bf]",
+    tone: "bg-[#056e7d]/15 text-[#056e7d] dark:bg-[#056e7d] dark:text-[#5bd7bf]",
   },
   audio: {
     label: "Media",
     url: "/media",
     icon: MusicNotes,
-    tone: "bg-[#147e68]/15 text-[#147e68] dark:bg-[#147e68] dark:text-[#5bd7bf]",
+    tone: "bg-[#056e7d]/15 text-[#056e7d] dark:bg-[#056e7d] dark:text-[#5bd7bf]",
   },
   other: {
     label: "Others",

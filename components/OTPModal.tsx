@@ -71,7 +71,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
           </AlertDialogTitle>
           <AlertDialogDescription className="text-center text-sm leading-6 text-[#4d453e] dark:text-[#d0c4bb]">
             We sent a 6-digit OTP to{" "}
-            <span className="font-semibold text-[#147e68] dark:text-[#5bd7bf]">
+            <span className="font-semibold text-[#056e7d] dark:text-[#5bd7bf]">
               {email}
             </span>
             .
@@ -102,7 +102,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
           <AlertDialogFooter className="flex-col gap-3 sm:flex-col">
             <Button
               type="submit"
-              className="h-12 w-full rounded-lg bg-[#147e68] font-semibold text-white hover:bg-[#147e68]/90"
+              className="h-12 w-full rounded-lg bg-[#056e7d] font-semibold text-white hover:bg-[#056e7d]/90"
               disabled={loading}
             >
               Submit
@@ -113,7 +113,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
               <Button
                 type="button"
                 variant="link"
-                className="px-1 font-semibold text-[#147e68] dark:text-[#5bd7bf]"
+                className="px-1 font-semibold text-[#056e7d] dark:text-[#5bd7bf]"
                 onClick={() => sendEmailOTP({ email })}
               >
                 Resend

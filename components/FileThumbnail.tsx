@@ -148,7 +148,7 @@ export function FileThumbnail({
     return (
       <div
         className={cn(
-          "flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#147e68]/15 text-[#147e68] dark:bg-[#147e68] dark:text-[#5bd7bf]",
+          "flex size-10 shrink-0 items-center justify-center rounded-lg bg-[#056e7d]/15 text-[#056e7d] dark:bg-[#056e7d] dark:text-[#5bd7bf]",
           className
         )}
       >

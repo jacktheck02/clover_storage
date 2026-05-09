@@ -216,14 +216,14 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
                 audioRef.current.currentTime = nextTime;
                 setCurrentTime(nextTime);
               }}
-              className="w-full accent-[#147e68]"
+              className="w-full accent-[#056e7d]"
               aria-label="Audio progress"
             />
             <div className="mt-5 flex justify-center">
               <button
                 type="button"
                 onClick={toggleAudioPlayback}
-                className="flex size-11 items-center justify-center rounded-full bg-[#147e68] text-white"
+                className="flex size-11 items-center justify-center rounded-full bg-[#056e7d] text-white"
                 aria-label={isPlaying ? "Pause audio" : "Play audio"}
               >
                 {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
@@ -303,7 +303,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
           href={file.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="rounded-lg bg-[#147e68] px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-lg bg-[#056e7d] px-4 py-2 text-sm font-semibold text-white"
         >
           Open in new tab
         </a>

@@ -16,11 +16,6 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           <span className="sr-only">Clover</span>
         </Link>
         <div className="w-full max-w-[440px]">{children}</div>
-        <footer className="mt-12 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-          <span>Privacy Policy</span>
-          <span>Terms of Service</span>
-          <span>Contact Support</span>
-        </footer>
       </section>
 
       <section className="relative hidden min-h-screen w-1/2 overflow-hidden border-l border-[#d0c4bb]/40 bg-[#f8f2f0] dark:border-transparent dark:bg-[#1d1b1a] lg:block">

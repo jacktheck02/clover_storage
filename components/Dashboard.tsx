@@ -125,7 +125,7 @@ export function Dashboard({ files, totalSpace }: DashboardProps) {
           </h2>
           <Link
             href="/all"
-            className="text-xs font-bold uppercase tracking-[0.05em] text-[#147e68] hover:underline dark:text-[#5bd7bf]"
+            className="text-xs font-bold uppercase tracking-[0.05em] text-[#056e7d] hover:underline dark:text-[#5bd7bf]"
           >
             View all
           </Link>

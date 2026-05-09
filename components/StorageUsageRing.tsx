@@ -35,7 +35,7 @@ export function StorageUsageRing({ percentage }: StorageUsageRingProps) {
         cy="50"
         r={radius}
         fill="none"
-        stroke="#147e68"
+        stroke="#056e7d"
         strokeLinecap="round"
         strokeWidth="8"
         strokeDasharray={circumference}
