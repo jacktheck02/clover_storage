@@ -22,21 +22,21 @@ export async function PUT(
       return Response.json({ error: "Invalid file id" }, { status: 400 });
     }
 
-    const contentLength = Number(request.headers.get("content-length") || 0);
-    if (contentLength > MAX_FILE_SIZE_BYTES) {
+    const fileBytes = await request.arrayBuffer();
+    if (fileBytes.byteLength > MAX_FILE_SIZE_BYTES) {
       return Response.json({ error: "File too large" }, { status: 413 });
     }
 
     const response = await backendRaw(`/uploads/direct/${fileId.data}`, {
       method: "PUT",
       headers: {
+        "content-length": String(fileBytes.byteLength),
         "content-type":
           request.headers.get("content-type") || "application/octet-stream",
         ...getActorHeaders(currentUser),
       },
-      body: request.body,
-      duplex: "half",
-    } as RequestInit);
+      body: fileBytes,
+    });
 
     if (!response.ok) {
       return Response.json(

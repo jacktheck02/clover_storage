@@ -1,5 +1,6 @@
 import { FileIcon } from "@/components/FileIcon";
 import { RecentFilesList } from "@/components/RecentFilesList";
+import { StorageUsageRing } from "@/components/StorageUsageRing";
 import { STORAGE_LIMIT_BYTES, fileTypeMeta } from "@/components/storage-utils";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import Link from "next/link";
@@ -27,8 +28,6 @@ export function Dashboard({ files, totalSpace }: DashboardProps) {
     Math.round((totalSpace.used / STORAGE_LIMIT_BYTES) * 100),
     100
   );
-  const circumference = 2 * Math.PI * 42;
-  const offset = circumference - (usedPercentage / 100) * circumference;
 
   const categories = [
     {
@@ -68,28 +67,7 @@ export function Dashboard({ files, totalSpace }: DashboardProps) {
     <div className="space-y-6">
       <section className="rounded-xl border border-[#e7e1df] bg-white p-5 shadow-[0_1px_3px_rgba(0,0,0,0.05),0_10px_15px_-3px_rgba(0,0,0,0.03)] dark:border-[#7f756d] dark:bg-[#1d1b1a] md:flex md:items-center md:gap-10 md:p-6">
         <div className="relative mx-auto size-48 shrink-0 md:mx-0">
-          <svg viewBox="0 0 100 100" className="size-full -rotate-90">
-            <circle
-              cx="50"
-              cy="50"
-              r="42"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="8"
-              className="text-[#f8f2f0] dark:text-[#4d453e]"
-            />
-            <circle
-              cx="50"
-              cy="50"
-              r="42"
-              fill="none"
-              stroke="#147e68"
-              strokeLinecap="round"
-              strokeWidth="8"
-              strokeDasharray={circumference}
-              strokeDashoffset={offset}
-            />
-          </svg>
+          <StorageUsageRing percentage={usedPercentage} />
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-3xl font-semibold tracking-[-0.02em] text-[#6b5c4c] dark:text-[#f4dfcb]">
               {convertFileSize(totalSpace.used)}

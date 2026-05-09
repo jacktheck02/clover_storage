@@ -585,28 +585,6 @@ async function sendSignupOtp(
   return id;
 }
 
-function limitUploadBody(
-  body: ReadableStream<Uint8Array> | null,
-  expectedSize: number
-) {
-  if (!body) {
-    throw new Response("Missing upload body", { status: 400 });
-  }
-
-  let bytesRead = 0;
-  return body.pipeThrough(
-    new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, controller) {
-        bytesRead += chunk.byteLength;
-        if (bytesRead > expectedSize || bytesRead > MAX_FILE_SIZE) {
-          throw new Error("Uploaded object size does not match the upload intent");
-        }
-        controller.enqueue(chunk);
-      },
-    })
-  );
-}
-
 async function createSession(env: Env, userId: string) {
   const sessionId = crypto.randomUUID();
   const token = randomToken();
@@ -977,12 +955,21 @@ async function handleUploads(request: Request, env: Env, path: string) {
     if (!file) throw new Response("Upload not found", { status: 404 });
     const contentLength = Number(request.headers.get("content-length") || 0);
     if (contentLength && contentLength !== file.size) {
-      throw new Response("Uploaded object size does not match the upload intent", {
-        status: 400,
-      });
+      throw new Response(
+        `Uploaded object size does not match the upload intent: received ${contentLength} bytes, expected ${file.size} bytes`,
+        { status: 400 }
+      );
+    }
+    const uploadBytes = await request.arrayBuffer();
+    if (uploadBytes.byteLength !== file.size || uploadBytes.byteLength > MAX_FILE_SIZE) {
+      await rejectPendingUpload(env, fileId, file.r2_key);
+      throw new Response(
+        `Uploaded object size does not match the upload intent: received ${uploadBytes.byteLength} bytes, expected ${file.size} bytes`,
+        { status: 400 }
+      );
     }
     try {
-      await env.FILES_BUCKET.put(file.r2_key, limitUploadBody(request.body, file.size), {
+      await env.FILES_BUCKET.put(file.r2_key, uploadBytes, {
         httpMetadata: {
           contentType: file.mime_type,
         },
@@ -997,9 +984,10 @@ async function handleUploads(request: Request, env: Env, path: string) {
     const object = await env.FILES_BUCKET.head(file.r2_key);
     if (!object || object.size !== file.size || object.size > MAX_FILE_SIZE) {
       await rejectPendingUpload(env, fileId, file.r2_key);
-      throw new Response("Uploaded object size does not match the upload intent", {
-        status: 400,
-      });
+      throw new Response(
+        `Uploaded object size does not match the upload intent: stored ${object?.size ?? 0} bytes, expected ${file.size} bytes`,
+        { status: 400 }
+      );
     }
     return json({ status: "uploaded" });
   }

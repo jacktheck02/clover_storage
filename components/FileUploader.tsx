@@ -7,6 +7,7 @@ import { useToast } from "@/hooks/use-toast";
 import { cn, convertFileSize, getFileType } from "@/lib/utils";
 import { UploadSimple, X } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import { useCallback, useState } from "react";
 import { useDropzone } from "react-dropzone";
 
@@ -55,10 +56,22 @@ export function FileUploader({ className }: FileUploaderProps) {
 
         const uploadResponse = await fetch(intent.uploadUrl, {
           method: intent.method,
+          headers: {
+            "content-type": file.type || "application/octet-stream",
+          },
           body: file,
         });
 
-        if (!uploadResponse.ok) throw new Error("Failed to upload file");
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text();
+          let errorMessage = errorText;
+          try {
+            errorMessage = JSON.parse(errorText).error || errorText;
+          } catch {
+            errorMessage = errorText;
+          }
+          throw new Error(errorMessage || "Failed to upload file");
+        }
 
         const completeResponse = await fetch("/api/uploads/complete", {
           method: "POST",
@@ -82,6 +95,7 @@ export function FileUploader({ className }: FileUploaderProps) {
         results.forEach((result) => {
           if (result.status === "rejected") console.error(result.reason);
         });
+        setFiles([]);
         toast({
           description: "Upload failed. Please try again.",
           className: "rounded-lg bg-[#ba1a1a] text-white",
@@ -109,50 +123,52 @@ export function FileUploader({ className }: FileUploaderProps) {
         Upload
       </Button>
 
-      {files.length > 0 && (
-        <div className="fixed bottom-6 right-6 z-50 w-[min(420px,calc(100vw-32px))] rounded-xl border border-[#d0c4bb] bg-white p-4 shadow-[0_16px_40px_rgba(31,27,24,0.16)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
-          <h4 className="mb-3 text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
-            Uploading
-          </h4>
-          <ul className="space-y-2">
-            {files.map((file) => {
-              const { type } = getFileType(file.name);
+      {files.length > 0 &&
+        createPortal(
+          <div className="fixed bottom-6 right-6 z-[100] w-[min(420px,calc(100vw-32px))] rounded-xl border border-[#d0c4bb] bg-white p-4 shadow-[0_16px_40px_rgba(31,27,24,0.16)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+            <h4 className="mb-3 text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
+              Uploading
+            </h4>
+            <ul className="space-y-2">
+              {files.map((file) => {
+                const { type } = getFileType(file.name);
 
-              return (
-                <li
-                  key={file.name}
-                  className="flex items-center justify-between gap-3 rounded-lg bg-[#f8f2f0] p-2 dark:bg-[#32302e]"
-                >
-                  <div className="flex min-w-0 items-center gap-3">
-                    <FileIcon type={type} />
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
-                        {file.name}
-                      </p>
-                      <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                        {convertFileSize(file.size)}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      setFiles((current) =>
-                        current.filter((item) => item.name !== file.name)
-                      );
-                    }}
-                    className="rounded-full p-1 text-[#7f756d] hover:bg-[#ede7e4] dark:hover:bg-[#4d453e]"
+                return (
+                  <li
+                    key={file.name}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-[#f8f2f0] p-2 dark:bg-[#32302e]"
                   >
-                    <X className="size-4" />
-                    <span className="sr-only">Remove {file.name}</span>
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
+                    <div className="flex min-w-0 items-center gap-3">
+                      <FileIcon type={type} />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
+                          {file.name}
+                        </p>
+                        <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                          {convertFileSize(file.size)}
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        setFiles((current) =>
+                          current.filter((item) => item.name !== file.name)
+                        );
+                      }}
+                      className="rounded-full p-1 text-[#7f756d] hover:bg-[#ede7e4] dark:hover:bg-[#4d453e]"
+                    >
+                      <X className="size-4" />
+                      <span className="sr-only">Remove {file.name}</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
