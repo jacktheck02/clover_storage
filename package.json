@@ -1,7 +1,26 @@
 {
   "name": "clover",
   "version": "0.1.0",
+  "description": "A cloud file storage and management app built with Next.js, Cloudflare Workers, D1, and R2.",
   "private": true,
+  "license": "MIT",
+  "author": "satyalyadav",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/satyalyadav/clover_storage.git"
+  },
+  "bugs": {
+    "url": "https://github.com/satyalyadav/clover_storage/issues"
+  },
+  "homepage": "https://github.com/satyalyadav/clover_storage#readme",
+  "keywords": [
+    "nextjs",
+    "cloudflare-workers",
+    "cloudflare-d1",
+    "cloudflare-r2",
+    "file-storage"
+  ],
+  "packageManager": "npm@11.6.2",
   "engines": {
     "node": ">=22"
   },

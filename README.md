@@ -43,7 +43,7 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 
 ## Prerequisites
 
-- **Node.js** 20.19+ and npm/yarn/pnpm/bun
+- **Node.js** 22+ and npm. This repository includes an `.nvmrc` for Node 22.16.0.
 - A Cloudflare account with Workers, D1, and R2 enabled
 - A Resend account and verified sender for production OTP email
 
@@ -52,20 +52,14 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 ### 1. Clone the repository
 
 ```bash
-git clone <repository-url>
-cd clover
+git clone https://github.com/satyalyadav/clover_storage.git
+cd clover_storage
 ```
 
 ### 2. Install dependencies
 
 ```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
-# or
-bun install
 ```
 
 ### 3. Set up Cloudflare
@@ -78,7 +72,13 @@ npx wrangler r2 bucket create clover-files
 npx wrangler r2 bucket create clover-backups
 ```
 
-Update `wrangler.jsonc` with the generated D1 `database_id`, then apply migrations:
+Copy the example Wrangler config, then update `wrangler.jsonc` with the generated D1 `database_id` and any bucket names you changed:
+
+```bash
+cp wrangler.example.jsonc wrangler.jsonc
+```
+
+Apply migrations:
 
 ```bash
 npm run db:migrations:apply
@@ -87,14 +87,13 @@ npm run db:migrations:apply:remote
 
 ### 4. Set up environment variables
 
-For local Vercel/Next development, create a `.env.local` file in the root directory:
+For local Vercel/Next development, copy the environment example:
 
-```env
-AUTH_COOKIE_NAME=clover-session
-CLOVER_BACKEND_URL=http://localhost:8787
-CLOVER_BACKEND_SECRET=replace_with_the_same_secret_used_by_the_worker
-NEXT_PUBLIC_TURNSTILE_SITE_KEY=optional_turnstile_site_key
+```bash
+cp .env.example .env.local
 ```
+
+Then edit `.env.local` with your local values. `CLOVER_BACKEND_SECRET` must be the same long random value used by the Worker.
 
 Set the same `AUTH_COOKIE_NAME`, `CLOVER_BACKEND_URL`, and `CLOVER_BACKEND_SECRET` in Vercel project environment variables before pushing to a Vercel-deployed branch.
 
@@ -161,11 +160,26 @@ npm run cleanup:uploads
 
 The cleanup script requires `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and `CLOUDFLARE_API_TOKEN`. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME` as well if it should delete orphaned R2 objects.
 
-If you previously enabled direct browser uploads to R2, reapply the checked-in CORS policy after deployment:
+If you previously enabled direct browser uploads to R2, copy the example CORS policy, update its production origin, and apply it after deployment:
 
 ```bash
+cp r2-cors.example.json r2-cors.json
 npm run r2:cors:set
 ```
+
+## Backend Structure
+
+The Cloudflare Worker backend is split by responsibility under `cloudflare-api/src`:
+
+- `index.ts` - Worker entrypoint, authorization gate, route dispatch, and top-level error handling
+- `auth.ts` - OTP, sessions, Turnstile, Resend, and authenticated actor lookup
+- `files.ts` - file listing, rename, share, delete, and storage summary routes
+- `uploads.ts` - upload intent, direct upload, and upload completion routes
+- `objects.ts` - authenticated file view/download streaming from R2
+- `schemas.ts` - request validation schemas
+- `storage.ts` - file type, MIME, R2 key, quota, and content-disposition helpers
+- `users.ts` - D1 user/file row mapping helpers
+- `crypto.ts`, `http.ts`, `rate-limit.ts`, `constants.ts`, and `types.ts` - shared utilities
 
 ## Learn More
 
@@ -191,3 +205,17 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 **Important:** Vercel hosts the frontend only. Deploy the backend separately with `npm run backend:deploy`, then point `CLOVER_BACKEND_URL` at that Worker URL.
 
 Vercel is the supported frontend deployment target for this project. Other hosts may work, but they need equivalent support for Next.js App Router and the same frontend environment variables.
+
+## Open Source
+
+Clover is released under the [MIT License](./LICENSE).
+
+Before opening a pull request, run:
+
+```bash
+npm run lint
+npm run build
+npm audit --omit=dev
+```
+
+Do not commit local deployment files such as `.env.local`, `wrangler.jsonc`, `r2-cors.json`, `.dev.vars`, `.wrangler/`, `.next/`, or `.open-next/`.
