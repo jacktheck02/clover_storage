@@ -3,8 +3,7 @@
 import { navItems } from "@/components/storage-utils";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
-import { SignOut } from "@phosphor-icons/react";
-import Image from "next/image";
+import { SignOut, UserCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -58,14 +57,9 @@ export function Sidebar({ user }: SidebarProps) {
 
       <div className="shrink-0 border-t border-[#d0c4bb] pt-4 dark:border-[#7f756d]">
         <div className="flex items-center gap-3">
-          <Image
-            src={user.avatar}
-            alt={`${user.fullName} avatar`}
-            width={40}
-            height={40}
-            className="size-10 rounded-full object-cover"
-            unoptimized
-          />
+          <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#d0c4bb] bg-[#fffaf7] text-[#6b5c4c] dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#d7c3b0]">
+            <UserCircle className="size-6" weight="duotone" />
+          </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold capitalize text-[#1d1b1a] dark:text-[#f5efed]">
               {user.fullName}

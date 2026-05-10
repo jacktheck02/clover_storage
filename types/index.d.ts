@@ -7,7 +7,6 @@ declare interface UserDocument {
   accountId: string;
   fullName: string;
   email: string;
-  avatar: string;
 }
 
 declare interface FileDocument {
@@ -73,17 +72,6 @@ declare interface DeleteFileProps {
 
 declare interface FileUploaderProps {
   className?: string;
-}
-
-declare interface MobileNavigationProps {
-  fullName: string;
-  avatar: string;
-  email: string;
-}
-declare interface SidebarProps {
-  fullName: string;
-  avatar: string;
-  email: string;
 }
 
 declare interface ThumbnailProps {

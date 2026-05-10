@@ -87,7 +87,7 @@ export function Search() {
 
       {open && (
         <div
-          className={`absolute left-0 top-14 z-[80] overflow-hidden rounded-xl border border-[#d0c4bb] bg-[#fffaf7] p-2 shadow-[0_18px_45px_rgba(31,27,24,0.18)] dark:border-[#7f756d] dark:bg-[#1d1b1a] ${
+          className={`absolute left-0 top-14 z-[80] overflow-hidden rounded-xl border border-[#d0c4bb] bg-[#fffaf7] p-2 shadow-[0_8px_20px_rgba(31,27,24,0.08)] dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:shadow-[0_8px_20px_rgba(0,0,0,0.22)] ${
             results.length > 0 ? "w-full" : "w-[min(360px,100%)]"
           }`}
         >

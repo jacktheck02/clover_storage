@@ -12,8 +12,7 @@ import { Logo } from "@/components/Logo";
 import { navItems } from "@/components/storage-utils";
 import { signOutUser } from "@/lib/actions/user.actions";
 import { cn } from "@/lib/utils";
-import { List, SignOut } from "@phosphor-icons/react";
-import Image from "next/image";
+import { List, SignOut, UserCircle } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -49,14 +48,9 @@ export function MobileNav({ user }: MobileNavProps) {
         <SheetContent className="flex h-screen flex-col border-[#d0c4bb] bg-[#fef8f5] px-4 py-5 dark:border-[#7f756d] dark:bg-[#32302e]">
           <SheetTitle className="sr-only">Clover navigation</SheetTitle>
           <div className="flex items-center gap-3 rounded-xl bg-[#f8f2f0] p-3 dark:bg-[#1d1b1a]">
-            <Image
-              src={user.avatar}
-              alt={`${user.fullName} avatar`}
-              width={42}
-              height={42}
-              className="size-10 rounded-full object-cover"
-              unoptimized
-            />
+            <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#d0c4bb] bg-[#fffaf7] text-[#6b5c4c] dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#d7c3b0]">
+              <UserCircle className="size-6" weight="duotone" />
+            </span>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold capitalize text-[#1d1b1a] dark:text-[#f5efed]">
                 {user.fullName}

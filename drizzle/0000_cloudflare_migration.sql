@@ -2,7 +2,6 @@ CREATE TABLE IF NOT EXISTS user_profiles (
   id TEXT PRIMARY KEY NOT NULL,
   email TEXT NOT NULL,
   full_name TEXT NOT NULL,
-  avatar_url TEXT NOT NULL,
   created_at TEXT NOT NULL,
   updated_at TEXT NOT NULL
 );

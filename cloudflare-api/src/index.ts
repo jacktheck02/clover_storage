@@ -22,8 +22,6 @@ const MAX_JSON_BODY_SIZE = 16 * 1024;
 const USER_STORAGE_LIMIT = 128 * 1024 * 1024;
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const OTP_MAX_AGE_SECONDS = 5 * 60;
-const AVATAR_PLACEHOLDER_URL =
-  "https://cdn.pixabay.com/photo/2016/08/08/09/17/avatar-1577909_960_720.png";
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -128,7 +126,6 @@ type UserRow = {
   id: string;
   email: string;
   full_name: string;
-  avatar_url: string;
   created_at: string;
   updated_at: string;
 };
@@ -427,7 +424,6 @@ function mapUser(user: UserRow) {
     accountId: user.id,
     fullName: user.full_name,
     email: user.email,
-    avatar: user.avatar_url,
   };
 }
 
@@ -454,7 +450,7 @@ function mapFile(file: FileRow) {
 
 async function getUserByEmail(env: Env, email: string) {
   return env.DB.prepare(
-    `SELECT id, email, full_name, avatar_url, created_at, updated_at
+    `SELECT id, email, full_name, created_at, updated_at
      FROM user_profiles
      WHERE email = ?`
   )
@@ -464,7 +460,7 @@ async function getUserByEmail(env: Env, email: string) {
 
 async function getUserById(env: Env, id: string) {
   return env.DB.prepare(
-    `SELECT id, email, full_name, avatar_url, created_at, updated_at
+    `SELECT id, email, full_name, created_at, updated_at
      FROM user_profiles
      WHERE id = ?`
   )
@@ -688,10 +684,10 @@ async function handleAuth(request: Request, env: Env, path: string) {
         const id = crypto.randomUUID();
         await env.DB.prepare(
           `INSERT INTO user_profiles
-            (id, email, full_name, avatar_url, created_at, updated_at)
-           VALUES (?, ?, ?, ?, ?, ?)`
+            (id, email, full_name, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?)`
         )
-          .bind(id, signupOtp.email, signupOtp.full_name, AVATAR_PLACEHOLDER_URL, now, now)
+          .bind(id, signupOtp.email, signupOtp.full_name, now, now)
           .run();
         user = await getUserById(env, id);
       }
@@ -741,7 +737,7 @@ async function handleAuth(request: Request, env: Env, path: string) {
     if (!userId || !token) return json({ user: null });
     const tokenHash = await hashSecret(env, token, userId);
     const user = await env.DB.prepare(
-      `SELECT u.id, u.email, u.full_name, u.avatar_url, u.created_at, u.updated_at
+      `SELECT u.id, u.email, u.full_name, u.created_at, u.updated_at
        FROM auth_sessions s
        INNER JOIN user_profiles u ON u.id = s.user_id
        WHERE s.user_id = ? AND s.token_hash = ? AND s.expires_at > ?

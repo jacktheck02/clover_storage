@@ -13,7 +13,6 @@ export const userProfiles = sqliteTable(
     id: text("id").primaryKey(),
     email: text("email").notNull(),
     fullName: text("full_name").notNull(),
-    avatarUrl: text("avatar_url").notNull(),
     createdAt: text("created_at").notNull(),
     updatedAt: text("updated_at").notNull(),
   },
