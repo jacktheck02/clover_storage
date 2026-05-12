@@ -2,8 +2,6 @@
 
 Clover is a cloud file storage and management web application. It is basically a lightweight clone of Google Drive. The site is hosted on Vercel with Next.js, while a separate Cloudflare Worker backend owns Cloudflare D1 auth/file metadata and Cloudflare R2 private file objects. You can upload files, preview them, and share them with other users in your instance of the application.
 
-Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mastery-Pro/storage-management).
-
 ## Demo
 
 ![Clover demo](public/assets/images/demo.gif)
