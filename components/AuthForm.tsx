@@ -22,6 +22,8 @@ import {
   User,
 } from "@phosphor-icons/react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import type { MouseEvent } from "react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -33,7 +35,11 @@ const authSchema = (type: FormType) =>
     email: z.string().email(),
     fullName:
       type === "sign-up"
-        ? z.string().trim().min(2).max(50)
+        ? z
+            .string()
+            .trim()
+            .min(2, "Please enter your name.")
+            .max(50, "Please keep your name under 50 characters.")
         : z.string().optional(),
   });
 
@@ -43,6 +49,8 @@ export function AuthForm({ type }: { type: FormType }) {
   const [infoMessage, setInfoMessage] = useState("");
   const [accountId, setAccountId] = useState<string | null>(null);
   const [turnstileToken, setTurnstileToken] = useState("");
+  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
+  const router = useRouter();
   const { toast } = useToast();
   const formSchema = authSchema(type);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -95,12 +103,31 @@ export function AuthForm({ type }: { type: FormType }) {
     }
   };
 
+  const nextAuthPath = type === "sign-in" ? "/sign-up" : "/sign-in";
+  const nextAuthLabel =
+    type === "sign-in" ? "Sign up for an account" : "Sign in";
+
+  const handleAuthModeChange = (event: MouseEvent<HTMLAnchorElement>) => {
+    event.preventDefault();
+    if (isSwitchingMode) return;
+
+    setIsSwitchingMode(true);
+    window.setTimeout(() => {
+      router.push(nextAuthPath);
+    }, 180);
+  };
+
   return (
     <>
       <Form {...form}>
         <form
           onSubmit={form.handleSubmit(onSubmit)}
-          className="space-y-6"
+          className={[
+            "animate-in fade-in-0 slide-in-from-bottom-2 space-y-6 duration-300 transition-all ease-out motion-reduce:animate-none motion-reduce:transition-none",
+            isSwitchingMode
+              ? "translate-y-2 opacity-0 blur-[2px]"
+              : "translate-y-0 opacity-100 blur-0",
+          ].join(" ")}
         >
           <div className="text-center">
             <h1 className="text-5xl font-semibold tracking-[-0.02em] text-[#6b5c4c] dark:text-[#d7c3b0]">
@@ -116,7 +143,7 @@ export function AuthForm({ type }: { type: FormType }) {
               control={form.control}
               name="fullName"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className="animate-in fade-in-0 slide-in-from-top-2 duration-300 motion-reduce:animate-none">
                   <FormLabel className="text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
                     Full name
                   </FormLabel>
@@ -192,10 +219,11 @@ export function AuthForm({ type }: { type: FormType }) {
           <div className="border-t border-[#d0c4bb]/40 pt-6 text-center text-sm text-[#4d453e] dark:border-[#7f756d]/40 dark:text-[#d0c4bb]">
             {type === "sign-in" ? "Don't have an account?" : "Already have an account?"}{" "}
             <Link
-              href={type === "sign-in" ? "/sign-up" : "/sign-in"}
+              href={nextAuthPath}
+              onClick={handleAuthModeChange}
               className="font-bold text-[#056e7d] hover:underline dark:text-[#5bd7bf]"
             >
-              {type === "sign-in" ? "Sign up for an account" : "Sign in"}
+              {nextAuthLabel}
             </Link>
           </div>
         </form>
