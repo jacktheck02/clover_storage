@@ -6,9 +6,7 @@ Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mast
 
 ## Demo
 
-[![Watch the Clover demo](public/assets/images/demo-poster.jpg)](https://github.com/satyalyadav/clover_storage/releases/download/demo-media/clover-demo.mp4)
-
-[Watch the demo video](https://github.com/satyalyadav/clover_storage/releases/download/demo-media/clover-demo.mp4) (MP4, 15 MB)
+![Clover demo](public/assets/images/demo.gif)
 
 ## Features
 
