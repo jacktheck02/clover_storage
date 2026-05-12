@@ -43,6 +43,8 @@ yarn-error.log*
 wrangler.jsonc
 r2-cors.json
 .dev.vars
+clover-d1-*.sql
+/clover demo.mp4
 
 # typescript
 *.tsbuildinfo

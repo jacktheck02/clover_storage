@@ -4,6 +4,12 @@ Clover is a cloud file storage and management web application. It is basically a
 
 Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mastery-Pro/storage-management).
 
+## Demo
+
+[![Watch the Clover demo](public/assets/images/demo-poster.jpg)](https://github.com/satyalyadav/clover_storage/releases/download/demo-media/clover-demo.mp4)
+
+[Watch the demo video](https://github.com/satyalyadav/clover_storage/releases/download/demo-media/clover-demo.mp4) (MP4, 15 MB)
+
 ## Features
 
 - Email OTP sign-in and sign-up with hashed sessions
