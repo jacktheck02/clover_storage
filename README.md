@@ -4,67 +4,57 @@ Clover is a cloud file storage and management web application. It is basically a
 
 Based on the tutorial by [JavaScript Mastery](https://github.com/JavaScript-Mastery-Pro/storage-management).
 
-## Technologies Used
+## Features
 
-### Frontend
+- Email OTP sign-in and sign-up with hashed sessions
+- Optional Cloudflare Turnstile protection for auth flows
+- Private file storage in Cloudflare R2
+- D1-backed file metadata, sharing records, sessions, and rate limits
+- File upload, preview, download, rename, share, and delete flows
+- Dashboard with storage usage and recent files
+- Operations scripts for D1 backup and stale upload cleanup
 
-- **Next.js** - React framework with App Router
-- **React** - UI library
-- **TypeScript** - Type-safe development
-- **Tailwind CSS** - Utility-first CSS framework
-- **Radix UI** - Accessible primitives used by local UI components (dialogs, dropdowns, selects, toasts)
-- **shadcn/ui-style components** - Local reusable primitives in `components/ui`
-- **Phosphor Icons** - Icon library
+## Tech Stack
 
-### Backend & Services
+- **Frontend:** Next.js App Router, React, TypeScript, Tailwind CSS
+- **UI:** Radix primitives, local shadcn/ui-style components, Phosphor Icons
+- **Backend:** Cloudflare Workers, D1, R2
+- **Auth/email:** Email OTP, Resend, optional Cloudflare Turnstile
+- **Deployment:** Vercel for the Next.js app, Cloudflare for the Worker backend
 
-- **Vercel** - Next.js site hosting
-- **Cloudflare Workers** - Backend API for D1/R2 operations
-- **Cloudflare D1** - Auth, file metadata, and sharing records
-- **Cloudflare R2** - Private object storage
-- **Resend** - Email OTP delivery
-- **Cloudflare Turnstile** - Optional bot protection for auth flows
+## Architecture Notes
 
-### Form Handling & Validation
+Clover uses a split deployment:
 
-- **React Hook Form** - Form state management
-- **Zod** - Schema validation
-- **@hookform/resolvers** - Form validation integration
+- The **Next.js app** handles the UI, server actions, cookies, and user-facing API routes.
+- The **Cloudflare Worker** owns auth verification, D1 queries, R2 object access, upload validation, and file authorization.
+- The **R2 bucket is private**. File view and download requests are proxied through authenticated routes that check ownership or sharing access before streaming the object.
 
-### Additional Libraries
+Uploads currently use a server-mediated direct upload route:
 
-- **react-dropzone** - File upload handling
-- **input-otp** - OTP input component
-- **use-debounce** - Debouncing utilities
-- **jszip** - Archive preview support
-- **jsmediatags** - Audio artwork metadata parsing
-- **class-variance-authority** - Component variant management
-- **clsx** & **tailwind-merge** - Conditional styling utilities
+1. The browser asks the Next.js app for an upload intent.
+2. The Worker reserves a pending file row in D1.
+3. The browser uploads to a Next.js route.
+4. The Next.js route forwards the file to the Worker.
+5. The Worker writes the object to R2 and activates the file after validating size and ownership.
+
+This keeps R2 private and simple to operate, but it is not a presigned browser-to-R2 upload flow. The app intentionally caps files at 50 MB. For larger files or heavier usage, the next step would be presigned/direct R2 uploads with the same completion validation.
 
 ## Prerequisites
 
-- **Node.js** 22+ and npm. This repository includes an `.nvmrc` for Node 22.16.0.
-- A Cloudflare account with Workers, D1, and R2 enabled
-- A Resend account and verified sender for production OTP email
+- Node.js 22+ and npm. This repo includes `.nvmrc` for Node 22.16.0.
+- A Cloudflare account with Workers, D1, and R2 enabled.
+- A Resend account and verified sender for production OTP email.
 
-## Getting Started
+## Local Setup
 
-### 1. Clone the repository
-
-```bash
-git clone https://github.com/satyalyadav/clover_storage.git
-cd clover_storage
-```
-
-### 2. Install dependencies
+Install dependencies:
 
 ```bash
 npm install
 ```
 
-### 3. Set up Cloudflare
-
-Create the D1 database and R2 buckets:
+Create the Cloudflare resources:
 
 ```bash
 npx wrangler d1 create clover-db
@@ -72,32 +62,16 @@ npx wrangler r2 bucket create clover-files
 npx wrangler r2 bucket create clover-backups
 ```
 
-Copy the example Wrangler config, then update `wrangler.jsonc` with the generated D1 `database_id` and any bucket names you changed:
-
-```bash
-cp wrangler.example.jsonc wrangler.jsonc
-```
-
-Apply migrations:
-
-```bash
-npm run db:migrations:apply
-npm run db:migrations:apply:remote
-```
-
-### 4. Set up environment variables
-
-For local Vercel/Next development, copy the environment example:
+Copy and edit the local config files:
 
 ```bash
 cp .env.example .env.local
+cp wrangler.example.jsonc wrangler.jsonc
 ```
 
-Then edit `.env.local` with your local values. `CLOVER_BACKEND_SECRET` must be the same long random value used by the Worker.
+Update `wrangler.jsonc` with the generated D1 `database_id`. Use the same long random `CLOVER_BACKEND_SECRET` in `.env.local` and the Worker secret.
 
-Set the same `AUTH_COOKIE_NAME`, `CLOVER_BACKEND_URL`, and `CLOVER_BACKEND_SECRET` in Vercel project environment variables before pushing to a Vercel-deployed branch.
-
-For the Cloudflare Worker backend, configure secrets with Wrangler:
+Configure Worker secrets:
 
 ```bash
 npx wrangler secret put CLOVER_BACKEND_SECRET
@@ -106,35 +80,63 @@ npx wrangler secret put RESEND_API_KEY
 npx wrangler secret put RESEND_FROM_EMAIL
 ```
 
-OTP codes are not logged by default when email delivery is missing. For local-only debugging without Resend, set `AUTH_DEBUG_OTP_LOGGING=true` in your local Worker environment; do not enable it in production.
+Apply D1 migrations:
 
-If you enable Turnstile, set `TURNSTILE_ENABLED=true` for the Worker, add `TURNSTILE_SECRET_KEY` with Wrangler, and set `NEXT_PUBLIC_TURNSTILE_SITE_KEY` for the Next app.
+```bash
+npm run db:migrations:apply
+npm run db:migrations:apply:remote
+```
 
-Cloudflare API credentials such as `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_DATABASE_ID` are only for Wrangler, Drizzle Kit, and operations scripts. Keep them in your local shell or CI secret store, not in Vercel runtime variables and never in source.
-
-### 5. Run development servers
-
-Run the Cloudflare backend Worker:
+Run the backend and frontend in separate terminals:
 
 ```bash
 npm run backend:dev
+npm run dev
 ```
 
-In another terminal, run the Vercel/Next app:
+Open [http://localhost:3000](http://localhost:3000).
+
+## Environment
+
+Frontend/Vercel variables:
+
+- `AUTH_COOKIE_NAME`
+- `CLOVER_BACKEND_URL`
+- `CLOVER_BACKEND_SECRET`
+- `NEXT_PUBLIC_TURNSTILE_SITE_KEY` if Turnstile is enabled
+
+Worker secrets:
+
+- `CLOVER_BACKEND_SECRET`
+- `AUTH_HASH_PEPPER`
+- `RESEND_API_KEY`
+- `RESEND_FROM_EMAIL`
+- `TURNSTILE_SECRET_KEY` if Turnstile is enabled
+
+Worker vars:
+
+- `TURNSTILE_ENABLED`
+- `AUTH_DEBUG_OTP_LOGGING` for local-only OTP debugging without Resend
+
+Cloudflare API credentials such as `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CLOUDFLARE_DATABASE_ID` are only for Wrangler, Drizzle Kit, and operations scripts. Keep them in your shell or CI secrets, not in source or Vercel runtime variables.
+
+## Scripts
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev                         # Start the Next.js app
+npm run backend:dev                 # Start the Cloudflare Worker locally
+npm run lint                        # Run ESLint
+npm run build                       # Build the Next.js app
+npm run backend:deploy              # Deploy the Worker
+npm run db:migrations:apply         # Apply local D1 migrations
+npm run db:migrations:apply:remote  # Apply remote D1 migrations
+npm run backup:d1                   # Export remote D1 and upload to backup R2
+npm run cleanup:uploads             # Remove stale pending uploads
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser to see the application. The Next app calls the Worker URL from `CLOVER_BACKEND_URL`.
+## Deployment
 
-### 6. Build for production
+Deploy the frontend to Vercel and the backend to Cloudflare Workers:
 
 ```bash
 npm run db:migrations:apply:remote
@@ -142,80 +144,12 @@ npm run build
 npm run backend:deploy
 ```
 
-## Operations
-
-Create a remote D1 export and upload it to the backup R2 bucket:
-
-```bash
-BACKUPS_R2_BUCKET_NAME=clover-backups npm run backup:d1
-```
-
-The backup script uses the R2 S3 API from your shell or CI. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY` when running it.
-
-Clean up stale pending upload rows and orphaned R2 objects:
-
-```bash
-npm run cleanup:uploads
-```
-
-The cleanup script requires `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_DATABASE_ID`, and `CLOUDFLARE_API_TOKEN`. Set `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_BUCKET_NAME` as well if it should delete orphaned R2 objects.
-
-If you previously enabled direct browser uploads to R2, copy the example CORS policy, update its production origin, and apply it after deployment:
-
-```bash
-cp r2-cors.example.json r2-cors.json
-npm run r2:cors:set
-```
-
-## Backend Structure
-
-The Cloudflare Worker backend is split by responsibility under `cloudflare-api/src`:
-
-- `index.ts` - Worker entrypoint, authorization gate, route dispatch, and top-level error handling
-- `auth.ts` - OTP, sessions, Turnstile, Resend, and authenticated actor lookup
-- `files.ts` - file listing, rename, share, delete, and storage summary routes
-- `uploads.ts` - upload intent, direct upload, and upload completion routes
-- `objects.ts` - authenticated file view/download streaming from R2
-- `schemas.ts` - request validation schemas
-- `storage.ts` - file type, MIME, R2 key, quota, and content-disposition helpers
-- `users.ts` - D1 user/file row mapping helpers
-- `crypto.ts`, `http.ts`, `rate-limit.ts`, `constants.ts`, and `types.ts` - shared utilities
-
-## Learn More
-
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Vercel Next.js Documentation](https://vercel.com/docs/frameworks/nextjs)
-- [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers/)
-- [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1/)
-- [Cloudflare R2 Documentation](https://developers.cloudflare.com/r2/)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [Radix UI Documentation](https://www.radix-ui.com/docs)
-
-## Deployment
-
-### Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme).
-
-1. Push your code to GitHub/GitLab/Bitbucket
-2. Import your repository to Vercel
-3. Add Vercel frontend environment variables in **Settings** → **Environment Variables**
-4. Deploy!
-
-**Important:** Vercel hosts the frontend only. Deploy the backend separately with `npm run backend:deploy`, then point `CLOVER_BACKEND_URL` at that Worker URL.
-
-Vercel is the supported frontend deployment target for this project. Other hosts may work, but they need equivalent support for Next.js App Router and the same frontend environment variables.
+Set Vercel environment variables before deploying the frontend, then point `CLOVER_BACKEND_URL` at the deployed Worker URL.
 
 ## Open Source
 
 Clover is released under the [MIT License](./LICENSE).
 
-Before opening a pull request, run:
+## Acknowledgements
 
-```bash
-npm run lint
-npm run build
-npm audit --omit=dev
-```
-
-Do not commit local deployment files such as `.env.local`, `wrangler.jsonc`, `r2-cors.json`, `.dev.vars`, `.wrangler/`, `.next/`, or `.open-next/`.
+This project was originally based on the [JavaScript Mastery storage management tutorial](https://github.com/JavaScript-Mastery-Pro/storage-management) and has since been adapted with a custom Cloudflare Workers/D1/R2 backend, OTP auth, private object access, and deployment/operations tooling.
