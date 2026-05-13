@@ -6,8 +6,9 @@ import {
   MusicNotes,
   SquaresFour,
 } from "@phosphor-icons/react/ssr";
+import { USER_STORAGE_LIMIT_BYTES } from "@/shared/storage-limits";
 
-export const STORAGE_LIMIT_BYTES = 128 * 1024 * 1024;
+export const STORAGE_LIMIT_BYTES = USER_STORAGE_LIMIT_BYTES;
 
 export const navItems = [
   { name: "Dashboard", url: "/", icon: SquaresFour },

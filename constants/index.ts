@@ -1,3 +1,5 @@
+import { MAX_FILE_SIZE_BYTES } from "@/shared/storage-limits";
+
 export const sortTypes = [
     {
       label: 'Date created (newest)',
@@ -25,4 +27,4 @@ export const sortTypes = [
     },
 ];
 
-export const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+export const MAX_FILE_SIZE = MAX_FILE_SIZE_BYTES;

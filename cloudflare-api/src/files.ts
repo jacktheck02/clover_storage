@@ -6,6 +6,7 @@ import {
   renameFileSchema,
   shareFileSchema,
 } from "./schemas";
+import { USER_STORAGE_LIMIT } from "./constants";
 import { mapFile } from "./users";
 import type { D1Value, Env, FileRow, FileType } from "./types";
 
@@ -130,7 +131,7 @@ export async function handleFiles(request: Request, env: Env, path: string) {
       audio: { size: 0, latestDate: "" },
       other: { size: 0, latestDate: "" },
       used: 0,
-      all: 128 * 1024 * 1024,
+      all: USER_STORAGE_LIMIT,
     };
     (rows.results as { type: FileType; size: number; updated_at: string }[]).forEach((file) => {
       totalSpace[file.type].size += file.size;

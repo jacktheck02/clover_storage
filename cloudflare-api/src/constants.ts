@@ -1,6 +1,12 @@
-export const MAX_FILE_SIZE = 50 * 1024 * 1024;
-export const MAX_JSON_BODY_SIZE = 16 * 1024;
-export const USER_STORAGE_LIMIT = 128 * 1024 * 1024;
+import {
+  MAX_FILE_SIZE_BYTES,
+  MAX_JSON_BODY_BYTES,
+  USER_STORAGE_LIMIT_BYTES,
+} from "../../shared/storage-limits";
+
+export const MAX_FILE_SIZE = MAX_FILE_SIZE_BYTES;
+export const MAX_JSON_BODY_SIZE = MAX_JSON_BODY_BYTES;
+export const USER_STORAGE_LIMIT = USER_STORAGE_LIMIT_BYTES;
 export const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 export const OTP_MAX_AGE_SECONDS = 5 * 60;
 

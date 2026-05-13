@@ -1,0 +1,3 @@
+export const MAX_FILE_SIZE_BYTES = 50 * 1024 * 1024;
+export const MAX_JSON_BODY_BYTES = 16 * 1024;
+export const USER_STORAGE_LIMIT_BYTES = 128 * 1024 * 1024;

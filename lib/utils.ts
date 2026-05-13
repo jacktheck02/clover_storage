@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { USER_STORAGE_LIMIT_BYTES } from "@/shared/storage-limits";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -25,8 +26,7 @@ export const convertFileSize = (sizeInBytes: number, digits?: number) => {
 };
 
 export const calculatePercentage = (sizeInBytes: number) => {
-  const totalSizeInBytes = 128 * 1024 * 1024; // 128MB in bytes
-  const percentage = (sizeInBytes / totalSizeInBytes) * 100;
+  const percentage = (sizeInBytes / USER_STORAGE_LIMIT_BYTES) * 100;
   return Number(percentage.toFixed(2));
 };
 
