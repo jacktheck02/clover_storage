@@ -3,6 +3,13 @@ import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 const migrationsDir = join(process.cwd(), "drizzle");
+const legacyBetterAuthDropMigration = "0003_drop_legacy_better_auth_tables.sql";
+const legacyBetterAuthTables = new Set([
+  "account",
+  "session",
+  "verification",
+  "user",
+]);
 
 const statementPatterns = [
   {
@@ -12,6 +19,7 @@ const statementPatterns = [
   },
   {
     pattern: /\bDROP\s+TABLE\b/i,
+    kind: "drop-table",
     message:
       "drops a table. Rebuilding parent tables can cascade-delete child rows in D1.",
   },
@@ -42,6 +50,12 @@ function splitStatements(sql) {
     .filter(Boolean);
 }
 
+function isAllowedLegacyBetterAuthDrop(fileName, statement) {
+  if (fileName !== legacyBetterAuthDropMigration) return false;
+  const match = statement.match(/^DROP\s+TABLE\s+IF\s+EXISTS\s+["`[]?([A-Za-z_][\w]*)["`\]]?$/i);
+  return Boolean(match && legacyBetterAuthTables.has(match[1].toLowerCase()));
+}
+
 const entries = await readdir(migrationsDir, { withFileTypes: true });
 const migrationFiles = entries
   .filter((entry) => entry.isFile() && entry.name.endsWith(".sql"))
@@ -56,8 +70,11 @@ for (const fileName of migrationFiles) {
   );
 
   for (const statement of splitStatements(sql)) {
-    for (const { pattern, message, requireMissingWhere } of statementPatterns) {
+    for (const { pattern, message, requireMissingWhere, kind } of statementPatterns) {
       if (!pattern.test(statement)) continue;
+      if (kind === "drop-table" && isAllowedLegacyBetterAuthDrop(fileName, statement)) {
+        continue;
+      }
       if (requireMissingWhere && /\bWHERE\b/i.test(statement)) continue;
       failures.push(`${fileName}: ${message}`);
     }
