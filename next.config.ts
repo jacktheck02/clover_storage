@@ -3,16 +3,6 @@ import type { NextConfig } from "next";
 const nextConfig: NextConfig = {
   images: {
     unoptimized: true,
-    remotePatterns: [
-      {
-        protocol: "https",
-        hostname: "cdn.pixabay.com",
-      },
-      {
-        protocol: "https",
-        hostname: "img.freepik.com",
-      },
-    ],
   },
   async headers() {
     const isDevelopment = process.env.NODE_ENV !== "production";
@@ -32,7 +22,7 @@ const nextConfig: NextConfig = {
           "frame-ancestors 'none'",
           "object-src 'none'",
           "form-action 'self'",
-          "img-src 'self' data: blob: https://cdn.pixabay.com https://img.freepik.com",
+          "img-src 'self' data: blob:",
           "media-src 'self' blob:",
           "connect-src 'self' https://challenges.cloudflare.com",
           "frame-src https://challenges.cloudflare.com",
