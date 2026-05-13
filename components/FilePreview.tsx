@@ -7,6 +7,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { ActionDropdown } from "@/components/ActionDropdown";
 import { FileIcon } from "@/components/FileIcon";
 import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { convertFileSize, getFileType } from "@/lib/utils";
@@ -37,6 +38,7 @@ interface ZipEntry {
 export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   const [zipContents, setZipContents] = useState<ZipEntry[]>([]);
   const [textContent, setTextContent] = useState("");
+  const [pdfObjectUrl, setPdfObjectUrl] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -105,6 +107,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     if (!file || !isOpen) {
       setZipContents([]);
       setTextContent("");
+      setPdfObjectUrl("");
       setError(null);
       setIsPlaying(false);
       setDuration(0);
@@ -115,6 +118,46 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     if (extension === "zip") loadZipContents();
     if (["txt", "md", "csv"].includes(extension)) loadTextContent();
   }, [extension, file, isOpen, loadTextContent, loadZipContents]);
+
+  useEffect(() => {
+    if (!file || !isOpen || extension !== "pdf") {
+      setPdfObjectUrl("");
+      return;
+    }
+
+    let objectUrl = "";
+    let cancelled = false;
+
+    const loadPdfPreview = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch(file.url);
+        if (!response.ok) throw new Error("Failed to fetch PDF");
+
+        objectUrl = URL.createObjectURL(await response.blob());
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+
+        setPdfObjectUrl(objectUrl);
+      } catch (loadError) {
+        console.error(loadError);
+        if (!cancelled) setError("Failed to load PDF preview");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    loadPdfPreview();
+
+    return () => {
+      cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+      setPdfObjectUrl("");
+    };
+  }, [extension, file, isOpen]);
 
   if (!file) return null;
 
@@ -269,9 +312,16 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     }
 
     if (extension === "pdf") {
+      if (error) return <PreviewError message={error} />;
+      if (loading || !pdfObjectUrl) return renderLoading("Loading PDF...");
+
       return (
         <div className="h-[70vh] bg-[#f8f2f0] dark:bg-[#32302e]">
-          <iframe src={file.url} className="h-full w-full border-0" title={file.name} />
+          <iframe
+            src={pdfObjectUrl}
+            className="h-full w-full border-0"
+            title={file.name}
+          />
         </div>
       );
     }
@@ -331,16 +381,8 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
       <div className="flex h-[360px] flex-col items-center justify-center gap-4 bg-[#f8f2f0] p-6 text-center dark:bg-[#32302e]">
         <FileIcon type={file.type} className="size-14 rounded-xl" />
         <p className="text-sm text-[#7f756d] dark:text-[#d0c4bb]">
-          Preview is not available for this file type.
+          File preview is not available.
         </p>
-        <a
-          href={file.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="rounded-lg bg-[#056e7d] px-4 py-2 text-sm font-semibold text-white"
-        >
-          Open in new tab
-        </a>
       </div>
     );
   };
@@ -354,8 +396,16 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
             : "w-[min(960px,calc(100vw-32px))]"
         }`}
       >
-        <DialogHeader className="border-b border-[#e7e1df] px-5 py-4 text-left dark:border-[#4d453e]">
-          <DialogTitle className="truncate pr-8 text-lg font-medium text-[#1d1b1a] dark:text-[#f5efed]">
+        <DialogHeader className="border-b border-[#e7e1df] px-5 py-4 pr-24 text-left dark:border-[#4d453e]">
+          <div className="absolute right-12 top-3.5">
+            <ActionDropdown
+              file={file}
+              onActionComplete={(completedAction) => {
+                if (completedAction === "delete") onClose();
+              }}
+            />
+          </div>
+          <DialogTitle className="truncate text-lg font-medium text-[#1d1b1a] dark:text-[#f5efed]">
             {file.name}
           </DialogTitle>
           <DialogDescription className="sr-only">

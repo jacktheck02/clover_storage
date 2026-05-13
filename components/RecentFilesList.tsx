@@ -3,7 +3,6 @@
 import { ActionDropdown } from "@/components/ActionDropdown";
 import { FilePreview } from "@/components/FilePreview";
 import { FileThumbnail } from "@/components/FileThumbnail";
-import { canPreviewFile } from "@/components/preview-utils";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import { useState } from "react";
 
@@ -22,14 +21,11 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
     <>
       <ul className="grid max-w-5xl grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {files.map((file) => {
-          const canPreview = canPreviewFile(file);
-
           return (
             <li key={file.$id}>
-              <a
-                href={canPreview ? "#" : file.url}
-                target={canPreview ? undefined : "_blank"}
-                rel={canPreview ? undefined : "noopener noreferrer"}
+              <div
+                role="button"
+                tabIndex={0}
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (
@@ -42,7 +38,18 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     return;
                   }
 
-                  if (canPreview) {
+                  setPreviewFile(file);
+                }}
+                onKeyDown={(event) => {
+                  const target = event.target as HTMLElement;
+                  if (
+                    target.closest(".file-action-dropdown") ||
+                    document.querySelector('[role="dialog"][data-state="open"]')
+                  ) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
                     event.preventDefault();
                     setPreviewFile(file);
                   }
@@ -69,7 +76,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                 >
                   <ActionDropdown file={file} />
                 </span>
-              </a>
+              </div>
             </li>
           );
         })}

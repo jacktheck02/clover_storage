@@ -52,7 +52,13 @@ const actions = [
   { label: "Delete", value: "delete", icon: Trash },
 ];
 
-export function ActionDropdown({ file }: { file: FileDocument }) {
+export function ActionDropdown({
+  file,
+  onActionComplete,
+}: {
+  file: FileDocument;
+  onActionComplete?: (action: (typeof actions)[number]["value"]) => void;
+}) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [action, setAction] = useState<(typeof actions)[number] | null>(null);
@@ -71,18 +77,20 @@ export function ActionDropdown({ file }: { file: FileDocument }) {
 
   const handleAction = async () => {
     if (!action) return;
+    const actionValue = action.value;
     setLoading(true);
     try {
-      if (action.value === "rename") {
+      if (actionValue === "rename") {
         await renameFile({ fileId: file.$id, name, extension: file.extension, path });
       }
-      if (action.value === "share") {
+      if (actionValue === "share") {
         await updateFileUsers({ fileId: file.$id, emails, path });
       }
-      if (action.value === "delete") {
+      if (actionValue === "delete") {
         await deleteFile({ fileId: file.$id, path });
       }
       close();
+      onActionComplete?.(actionValue);
     } finally {
       setLoading(false);
     }
@@ -106,7 +114,7 @@ export function ActionDropdown({ file }: { file: FileDocument }) {
             <span className="sr-only">Open actions for {file.name}</span>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56 rounded-xl border-[#d0c4bb] bg-white p-1 shadow-[0_12px_30px_rgba(31,27,24,0.12)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <DropdownMenuContent className="z-[70] w-56 rounded-xl border-[#d0c4bb] bg-white p-1 shadow-[0_12px_30px_rgba(31,27,24,0.12)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
           <DropdownMenuLabel className="truncate text-xs text-[#7f756d] dark:text-[#d0c4bb]">
             {file.name}
           </DropdownMenuLabel>

@@ -3,13 +3,11 @@
 import { ActionDropdown } from "@/components/ActionDropdown";
 import { FilePreview } from "@/components/FilePreview";
 import { FileThumbnail } from "@/components/FileThumbnail";
-import { canPreviewFile } from "@/components/preview-utils";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import { useState } from "react";
 
 export function FileCard({ file }: { file: FileDocument }) {
   const [previewOpen, setPreviewOpen] = useState(false);
-  const canPreview = canPreviewFile(file);
 
   const handleClick = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
@@ -24,7 +22,19 @@ export function FileCard({ file }: { file: FileDocument }) {
       return;
     }
 
-    if (canPreview) {
+    setPreviewOpen(true);
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent) => {
+    const target = event.target as HTMLElement;
+    if (
+      target.closest(".file-action-dropdown") ||
+      document.querySelector('[role="dialog"][data-state="open"]')
+    ) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
       event.preventDefault();
       setPreviewOpen(true);
     }
@@ -32,11 +42,11 @@ export function FileCard({ file }: { file: FileDocument }) {
 
   return (
     <>
-      <a
-        href={canPreview ? "#" : file.url}
+      <div
+        role="button"
+        tabIndex={0}
         onClick={handleClick}
-        target={canPreview ? undefined : "_blank"}
-        rel={canPreview ? undefined : "noopener noreferrer"}
+        onKeyDown={handleKeyDown}
         className="group flex min-h-[172px] flex-col justify-between rounded-lg bg-[#f8f2f0]/65 p-3 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/55 dark:hover:bg-[#1d1b1a]"
       >
         <div className="flex items-start justify-between">
@@ -65,7 +75,7 @@ export function FileCard({ file }: { file: FileDocument }) {
             <span className="max-w-[55%] truncate">By {file.owner.fullName}</span>
           </div>
         </div>
-      </a>
+      </div>
       <FilePreview
         file={previewOpen ? file : null}
         isOpen={previewOpen}
