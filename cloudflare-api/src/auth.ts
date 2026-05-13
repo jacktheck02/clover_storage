@@ -104,7 +104,7 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   const user = await getUserByEmail(env, normalizedEmail);
   await assertRateLimit(env, normalizedEmail, "otp-send", 3, 60);
 
-  if (!user) return deriveOpaqueUuid(env, "signin-missing-account", normalizedEmail);
+  if (!user) return null;
 
   const otp = generateOtp();
   const createdAt = nowIso();
