@@ -83,6 +83,11 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
           <InputOTP
             maxLength={6}
+            autoComplete="one-time-code"
+            data-bwignore="true"
+            inputMode="numeric"
+            pattern="^[0-9]+$"
+            pushPasswordManagerStrategy="none"
             value={password}
             onChange={(value) => {
               setPassword(value);
