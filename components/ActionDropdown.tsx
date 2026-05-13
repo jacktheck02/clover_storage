@@ -42,7 +42,8 @@ import {
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import type { FormEvent } from "react";
+import { useEffect, useState } from "react";
 
 const actions = [
   { label: "Rename", value: "rename", icon: Pencil },
@@ -52,36 +53,68 @@ const actions = [
   { label: "Delete", value: "delete", icon: Trash },
 ];
 
+const getBaseName = (fileName: string, extension: string) => {
+  const suffix = extension ? `.${extension}` : "";
+  if (!suffix || !fileName.toLowerCase().endsWith(suffix.toLowerCase())) {
+    return fileName;
+  }
+
+  return fileName.slice(0, -suffix.length);
+};
+
+const getFullName = (baseName: string, extension: string) => {
+  const trimmedName = baseName.trim();
+  if (!extension) return trimmedName;
+  return `${trimmedName}.${extension}`;
+};
+
 export function ActionDropdown({
   file,
   onActionComplete,
 }: {
   file: FileDocument;
-  onActionComplete?: (action: (typeof actions)[number]["value"]) => void;
+  onActionComplete?: (
+    action: (typeof actions)[number]["value"],
+    nextFileName?: string
+  ) => void;
 }) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [action, setAction] = useState<(typeof actions)[number] | null>(null);
-  const [name, setName] = useState(file.name);
+  const [name, setName] = useState(getBaseName(file.name, file.extension));
   const [emails, setEmails] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const path = usePathname();
+
+  useEffect(() => {
+    setName(getBaseName(file.name, file.extension));
+  }, [file.extension, file.name]);
 
   const close = () => {
     setDialogOpen(false);
     setDropdownOpen(false);
     setAction(null);
-    setName(file.name);
+    setName(getBaseName(file.name, file.extension));
     setEmails([]);
   };
 
-  const handleAction = async () => {
+  const handleAction = async (event?: FormEvent<HTMLFormElement>) => {
+    event?.preventDefault();
     if (!action) return;
     const actionValue = action.value;
+    const nextBaseName =
+      actionValue === "rename" ? getBaseName(name, file.extension).trim() : "";
+    const nextFileName =
+      actionValue === "rename" ? getFullName(nextBaseName, file.extension) : undefined;
     setLoading(true);
     try {
       if (actionValue === "rename") {
-        await renameFile({ fileId: file.$id, name, extension: file.extension, path });
+        await renameFile({
+          fileId: file.$id,
+          name: nextBaseName,
+          extension: file.extension,
+          path,
+        });
       }
       if (actionValue === "share") {
         await updateFileUsers({ fileId: file.$id, emails, path });
@@ -90,7 +123,8 @@ export function ActionDropdown({
         await deleteFile({ fileId: file.$id, path });
       }
       close();
-      onActionComplete?.(actionValue);
+      if (nextFileName) setName(getBaseName(nextFileName, file.extension));
+      onActionComplete?.(actionValue, nextFileName);
     } finally {
       setLoading(false);
     }
@@ -103,7 +137,13 @@ export function ActionDropdown({
   };
 
   return (
-    <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+    <Dialog
+      open={dialogOpen}
+      onOpenChange={(open) => {
+        if (open) setDialogOpen(true);
+        else close();
+      }}
+    >
       <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
         <DropdownMenuTrigger asChild>
           <button
@@ -162,56 +202,74 @@ export function ActionDropdown({
                 {action.label} action for {file.name}
               </DialogDescription>
             </DialogHeader>
-            <div className="space-y-4 px-5 py-4">
-              {action.value === "rename" && (
-                <Input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  className="h-12 rounded-lg border-[#d0c4bb] bg-[#f8f2f0] dark:border-[#7f756d] dark:bg-[#32302e]"
-                />
+            <form onSubmit={handleAction}>
+              <div className="space-y-4 px-5 py-4">
+                {action.value === "rename" && (
+                  <div className="space-y-2">
+                    <Input
+                      value={name}
+                      onChange={(event) => setName(event.target.value)}
+                      className="h-12 rounded-lg border-[#d0c4bb] bg-[#f8f2f0] dark:border-[#7f756d] dark:bg-[#32302e]"
+                      aria-label="File name"
+                      autoFocus
+                    />
+                    {file.extension ? (
+                      <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                        The extension will remain .{file.extension}.
+                      </p>
+                    ) : (
+                      <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                        This file has no extension.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {action.value === "details" && <FileDetails file={file} />}
+                {action.value === "share" && (
+                  <ShareInput
+                    file={file}
+                    onInputChange={setEmails}
+                    onRemove={removeUser}
+                  />
+                )}
+                {action.value === "delete" && (
+                  <div className="flex gap-3 rounded-lg bg-[#f8f2f0] p-3 dark:bg-[#32302e]">
+                    <FileIcon type={file.type} />
+                    <p className="text-sm leading-6 text-[#4d453e] dark:text-[#d0c4bb]">
+                      Delete{" "}
+                      <span className="font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
+                        {file.name}
+                      </span>
+                      ? This action cannot be undone.
+                    </p>
+                  </div>
+                )}
+              </div>
+              {["rename", "share", "delete"].includes(action.value) && (
+                <DialogFooter className="gap-2 border-t border-[#e7e1df] px-5 py-4 dark:border-[#4d453e] sm:justify-end">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    onClick={close}
+                    className="rounded-lg text-[#4d453e] dark:text-[#d0c4bb]"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={
+                      loading ||
+                      (action.value === "rename" &&
+                        !getBaseName(name, file.extension).trim())
+                    }
+                    className="rounded-lg bg-[#056e7d] text-white hover:bg-[#056e7d]/90"
+                  >
+                    <span className="capitalize">{action.value}</span>
+                    {loading && <SpinnerGap className="ml-2 size-4 animate-spin" />}
+                  </Button>
+                </DialogFooter>
               )}
-              {action.value === "details" && <FileDetails file={file} />}
-              {action.value === "share" && (
-                <ShareInput
-                  file={file}
-                  onInputChange={setEmails}
-                  onRemove={removeUser}
-                />
-              )}
-              {action.value === "delete" && (
-                <div className="flex gap-3 rounded-lg bg-[#f8f2f0] p-3 dark:bg-[#32302e]">
-                  <FileIcon type={file.type} />
-                  <p className="text-sm leading-6 text-[#4d453e] dark:text-[#d0c4bb]">
-                    Delete{" "}
-                    <span className="font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
-                      {file.name}
-                    </span>
-                    ? This action cannot be undone.
-                  </p>
-                </div>
-              )}
-            </div>
-            {["rename", "share", "delete"].includes(action.value) && (
-              <DialogFooter className="gap-2 border-t border-[#e7e1df] px-5 py-4 dark:border-[#4d453e] sm:justify-end">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  onClick={close}
-                  className="rounded-lg text-[#4d453e] dark:text-[#d0c4bb]"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="button"
-                  onClick={handleAction}
-                  disabled={loading}
-                  className="rounded-lg bg-[#056e7d] text-white hover:bg-[#056e7d]/90"
-                >
-                  <span className="capitalize">{action.value}</span>
-                  {loading && <SpinnerGap className="ml-2 size-4 animate-spin" />}
-                </Button>
-              </DialogFooter>
-            )}
+            </form>
           </>
         )}
       </DialogContent>

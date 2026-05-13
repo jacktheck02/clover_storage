@@ -39,6 +39,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   const [zipContents, setZipContents] = useState<ZipEntry[]>([]);
   const [textContent, setTextContent] = useState("");
   const [pdfObjectUrl, setPdfObjectUrl] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -46,7 +47,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const safeFileName = file?.name || "";
+  const safeFileName = displayName || file?.name || "";
   const { type, extension } = getFileType(safeFileName);
   const { artworkUrl } = useAudioArtwork(
     file?.url || "",
@@ -105,6 +106,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   useEffect(() => {
     if (!file || !isOpen) {
+      setDisplayName("");
       setZipContents([]);
       setTextContent("");
       setPdfObjectUrl("");
@@ -118,6 +120,10 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     if (extension === "zip") loadZipContents();
     if (["txt", "md", "csv"].includes(extension)) loadTextContent();
   }, [extension, file, isOpen, loadTextContent, loadZipContents]);
+
+  useEffect(() => {
+    setDisplayName(file?.name || "");
+  }, [file?.$id, file?.name]);
 
   useEffect(() => {
     if (!file || !isOpen || extension !== "pdf") {
@@ -161,6 +167,8 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   if (!file) return null;
 
+  const previewFile = displayName ? { ...file, name: displayName } : file;
+
   const formatTime = (seconds: number) => {
     if (!Number.isFinite(seconds)) return "0:00";
     const mins = Math.floor(seconds / 60);
@@ -202,7 +210,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         <div className="flex min-h-[420px] items-center justify-center bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
           <Image
             src={file.url}
-            alt={file.name}
+            alt={previewFile.name}
             width={1200}
             height={800}
             className="max-h-[70vh] max-w-full rounded-lg object-contain"
@@ -244,7 +252,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
                 {artworkUrl ? (
                   <Image
                     src={artworkUrl}
-                    alt={`${file.name} cover art`}
+                    alt={`${previewFile.name} cover art`}
                     width={48}
                     height={48}
                     className="size-12 rounded-lg object-cover"
@@ -253,7 +261,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
                 ) : (
                   <FileIcon type="audio" className="size-12 rounded-lg" />
                 )}
-                <p className="truncate text-sm font-semibold">{file.name}</p>
+                <p className="truncate text-sm font-semibold">{previewFile.name}</p>
               </div>
               <p className="shrink-0 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
                 {formatTime(currentTime)} / {formatTime(duration)}
@@ -320,7 +328,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
           <iframe
             src={pdfObjectUrl}
             className="h-full w-full border-0"
-            title={file.name}
+            title={previewFile.name}
           />
         </div>
       );
@@ -399,17 +407,20 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         <DialogHeader className="border-b border-[#e7e1df] px-5 py-4 pr-24 text-left dark:border-[#4d453e]">
           <div className="absolute right-12 top-3.5">
             <ActionDropdown
-              file={file}
-              onActionComplete={(completedAction) => {
+              file={previewFile}
+              onActionComplete={(completedAction, nextFileName) => {
                 if (completedAction === "delete") onClose();
+                if (completedAction === "rename" && nextFileName) {
+                  setDisplayName(nextFileName);
+                }
               }}
             />
           </div>
           <DialogTitle className="truncate text-lg font-medium text-[#1d1b1a] dark:text-[#f5efed]">
-            {file.name}
+            {previewFile.name}
           </DialogTitle>
           <DialogDescription className="sr-only">
-            Previewing {file.name}
+            Previewing {previewFile.name}
           </DialogDescription>
         </DialogHeader>
         <div className="overflow-auto">{renderPreview()}</div>
