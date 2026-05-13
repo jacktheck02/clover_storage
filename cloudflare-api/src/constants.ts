@@ -15,8 +15,6 @@ export const fileTypeValues = [
 export const sortValues = [
   "$createdAt-desc",
   "$createdAt-asc",
-  "$updatedAt-desc",
-  "$updatedAt-asc",
   "name-desc",
   "name-asc",
   "size-desc",

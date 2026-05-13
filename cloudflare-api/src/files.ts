@@ -33,7 +33,6 @@ export async function handleFiles(request: Request, env: Env, path: string) {
     const [rawSortBy = "$createdAt", rawOrderBy = "desc"] = body.sort.split("-");
     const sortMap: Record<string, string> = {
       $createdAt: "f.created_at",
-      $updatedAt: "f.updated_at",
       name: "f.name",
       size: "f.size",
     };

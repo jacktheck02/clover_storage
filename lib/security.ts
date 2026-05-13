@@ -22,8 +22,6 @@ const sortSchema = z
   .enum([
     "$createdAt-desc",
     "$createdAt-asc",
-    "$updatedAt-desc",
-    "$updatedAt-asc",
     "name-desc",
     "name-asc",
     "size-desc",
