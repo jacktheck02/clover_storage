@@ -6,9 +6,10 @@ import { convertFileSize } from "@/lib/utils";
 interface FilesPageProps {
   type: string;
   files: FilesResponse;
+  currentUser: UserDocument;
 }
 
-export function FilesPage({ type, files }: FilesPageProps) {
+export function FilesPage({ type, files, currentUser }: FilesPageProps) {
   const title = getPageTitle(type);
   const totalSize = files.documents.reduce((sum, file) => sum + file.size, 0);
 
@@ -37,7 +38,7 @@ export function FilesPage({ type, files }: FilesPageProps) {
       {files.total > 0 ? (
         <section className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {files.documents.map((file) => (
-            <FileCard key={file.$id} file={file} />
+            <FileCard key={file.$id} file={file} currentUser={currentUser} />
           ))}
         </section>
       ) : (

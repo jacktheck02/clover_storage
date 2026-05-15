@@ -44,7 +44,7 @@ const Page = async ({ searchParams, params }: SearchParamProps) => {
     sort,
   });
 
-  return <FilesPage type={type} files={files} />;
+  return <FilesPage type={type} files={files} currentUser={currentUser} />;
 };
 
 export default Page;

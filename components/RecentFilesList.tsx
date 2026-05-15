@@ -3,10 +3,17 @@
 import { ActionDropdown } from "@/components/ActionDropdown";
 import { FilePreview } from "@/components/FilePreview";
 import { FileThumbnail } from "@/components/FileThumbnail";
+import { isSharedWithUser, SharedFileBadge } from "@/components/SharedFileBadge";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import { useState } from "react";
 
-export function RecentFilesList({ files }: { files: FileDocument[] }) {
+export function RecentFilesList({
+  files,
+  currentUser,
+}: {
+  files: FileDocument[];
+  currentUser: UserDocument;
+}) {
   const [previewFile, setPreviewFile] = useState<FileDocument | null>(null);
 
   if (files.length === 0) {
@@ -21,6 +28,8 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
     <>
       <ul className="grid max-w-5xl grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-3">
         {files.map((file) => {
+          const sharedWithCurrentUser = isSharedWithUser(file, currentUser);
+
           return (
             <li key={file.$id}>
               <div
@@ -53,7 +62,13 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     setPreviewFile(file);
                   }
                 }}
-                className="flex min-h-16 items-center justify-between gap-3 rounded-lg bg-[#f8f2f0]/55 px-3 py-2.5 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/45 dark:hover:bg-[#1d1b1a]"
+                className={[
+                  "flex min-h-16 items-center justify-between gap-3 rounded-lg bg-[#f8f2f0]/55 px-3 py-2.5 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/45 dark:hover:bg-[#1d1b1a]",
+                  sharedWithCurrentUser &&
+                    "ring-1 ring-[#056e7d]/25 dark:ring-[#5bd7bf]/30",
+                ]
+                  .filter(Boolean)
+                  .join(" ")}
               >
                 <span className="flex min-w-0 items-center gap-3">
                   <FileThumbnail file={file} />
@@ -61,8 +76,13 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     <span className="block truncate text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
                       {file.name}
                     </span>
-                    <span className="block truncate text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                      {convertFileSize(file.size)} · {formatDateTime(file.$createdAt)}
+                    <span className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+                      {sharedWithCurrentUser && (
+                        <SharedFileBadge ownerName={file.owner.fullName} compact />
+                      )}
+                      <span className="truncate text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                        {convertFileSize(file.size)} · {formatDateTime(file.$createdAt)}
+                      </span>
                     </span>
                   </span>
                 </span>

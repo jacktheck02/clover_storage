@@ -12,6 +12,7 @@ type UsageBucket = {
 
 interface DashboardProps {
   files: FileDocument[];
+  currentUser: UserDocument;
   totalSpace: {
     document: UsageBucket;
     image: UsageBucket;
@@ -23,7 +24,7 @@ interface DashboardProps {
   };
 }
 
-export function Dashboard({ files, totalSpace }: DashboardProps) {
+export function Dashboard({ files, currentUser, totalSpace }: DashboardProps) {
   const usedPercentage = Math.min(
     Math.round((totalSpace.used / STORAGE_LIMIT_BYTES) * 100),
     100
@@ -148,7 +149,7 @@ export function Dashboard({ files, totalSpace }: DashboardProps) {
             View all
           </Link>
         </div>
-        <RecentFilesList files={files} />
+        <RecentFilesList files={files} currentUser={currentUser} />
       </section>
     </div>
   );

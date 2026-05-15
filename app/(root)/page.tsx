@@ -21,7 +21,13 @@ const DashboardPage = async () => {
     getTotalSpaceUsed(),
   ]);
 
-  return <CloverDashboard files={files.documents} totalSpace={totalSpace} />;
+  return (
+    <CloverDashboard
+      files={files.documents}
+      currentUser={currentUser}
+      totalSpace={totalSpace}
+    />
+  );
 };
 
 export default DashboardPage;

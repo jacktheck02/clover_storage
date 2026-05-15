@@ -2,6 +2,7 @@
 
 import { Input } from "@/components/ui/input";
 import { FileThumbnail } from "@/components/FileThumbnail";
+import { isSharedWithUser, SharedFileBadge } from "@/components/SharedFileBadge";
 import { getRouteForFile } from "@/components/storage-utils";
 import { getFiles } from "@/lib/actions/file.actions";
 import { formatDateTime } from "@/lib/utils";
@@ -10,10 +11,10 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useReducer, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
 
-export function Search() {
+export function Search({ currentUser }: { currentUser: UserDocument }) {
   return (
     <Suspense fallback={<SearchFallback />}>
-      <SearchContent />
+      <SearchContent currentUser={currentUser} />
     </Suspense>
   );
 }
@@ -41,7 +42,7 @@ function SearchFallback() {
   );
 }
 
-function SearchContent() {
+function SearchContent({ currentUser }: { currentUser: UserDocument }) {
   const [state, setState] = useReducer(
     (current: SearchState, patch: Partial<SearchState>) => ({
       ...current,
@@ -126,31 +127,43 @@ function SearchContent() {
         >
           {results.length > 0 ? (
             <ul className="max-h-[360px] overflow-auto">
-              {results.map((file) => (
-                <li key={file.$id}>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const route = getRouteForFile(file);
-                      clear();
-                      push(`${route}?query=${encodeURIComponent(query)}`);
-                    }}
-                    className="flex w-full items-center justify-between gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
-                  >
-                    <span className="flex min-w-0 items-center gap-3">
-                      <FileThumbnail file={file} className="size-9" sizes="36px" />
-                      <span className="min-w-0">
-                        <span className="block truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
-                          {file.name}
-                        </span>
-                        <span className="block text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                          {formatDateTime(file.$createdAt)}
+              {results.map((file) => {
+                const sharedWithCurrentUser = isSharedWithUser(file, currentUser);
+
+                return (
+                  <li key={file.$id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const route = getRouteForFile(file);
+                        clear();
+                        push(`${route}?query=${encodeURIComponent(query)}`);
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
+                    >
+                      <span className="flex min-w-0 items-center gap-3">
+                        <FileThumbnail file={file} className="size-9" sizes="36px" />
+                        <span className="min-w-0">
+                          <span className="block truncate text-sm font-medium text-[#1d1b1a] dark:text-[#f5efed]">
+                            {file.name}
+                          </span>
+                          <span className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+                            {sharedWithCurrentUser && (
+                              <SharedFileBadge
+                                ownerName={file.owner.fullName}
+                                compact
+                              />
+                            )}
+                            <span className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                              {formatDateTime(file.$createdAt)}
+                            </span>
+                          </span>
                         </span>
                       </span>
-                    </span>
-                  </button>
-                </li>
-              ))}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           ) : (
             <p className="px-3 py-5 text-center text-sm font-medium text-[#7f756d] dark:text-[#d0c4bb]">

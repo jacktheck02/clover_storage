@@ -3,11 +3,19 @@
 import { ActionDropdown } from "@/components/ActionDropdown";
 import { FilePreview } from "@/components/FilePreview";
 import { FileThumbnail } from "@/components/FileThumbnail";
+import { isSharedWithUser, SharedFileBadge } from "@/components/SharedFileBadge";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
 import { useState } from "react";
 
-export function FileCard({ file }: { file: FileDocument }) {
+export function FileCard({
+  file,
+  currentUser,
+}: {
+  file: FileDocument;
+  currentUser: UserDocument;
+}) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const sharedWithCurrentUser = isSharedWithUser(file, currentUser);
 
   const openFilePreview = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
@@ -46,7 +54,13 @@ export function FileCard({ file }: { file: FileDocument }) {
         tabIndex={0}
         onClick={openFilePreview}
         onKeyDown={handleKeyDown}
-        className="group flex min-h-[172px] flex-col justify-between rounded-lg bg-[#f8f2f0]/65 p-3 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/55 dark:hover:bg-[#1d1b1a]"
+        className={[
+          "group flex min-h-[172px] flex-col justify-between rounded-lg bg-[#f8f2f0]/65 p-3 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/55 dark:hover:bg-[#1d1b1a]",
+          sharedWithCurrentUser &&
+            "ring-1 ring-[#056e7d]/25 dark:ring-[#5bd7bf]/30",
+        ]
+          .filter(Boolean)
+          .join(" ")}
       >
         <div className="flex items-start justify-between">
           <FileThumbnail
@@ -65,9 +79,14 @@ export function FileCard({ file }: { file: FileDocument }) {
             <p className="line-clamp-2 text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
               {file.name}
             </p>
-            <p className="mt-1 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-              {formatDateTime(file.$createdAt)}
-            </p>
+            <div className="mt-2 flex min-w-0 flex-wrap items-center gap-2">
+              {sharedWithCurrentUser && (
+                <SharedFileBadge ownerName={file.owner.fullName} />
+              )}
+              <span className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                {formatDateTime(file.$createdAt)}
+              </span>
+            </div>
           </div>
           <div className="flex items-center justify-between pt-2 text-xs text-[#4d453e] dark:text-[#d0c4bb]">
             <span>{convertFileSize(file.size)}</span>
