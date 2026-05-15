@@ -5,7 +5,7 @@ import { FilePreview } from "@/components/FilePreview";
 import { FileThumbnail } from "@/components/FileThumbnail";
 import { isSharedWithUser, SharedFileBadge } from "@/components/SharedFileBadge";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export function RecentFilesList({
   files,
@@ -15,6 +15,11 @@ export function RecentFilesList({
   currentUser: UserDocument;
 }) {
   const [previewFile, setPreviewFile] = useState<FileDocument | null>(null);
+  const suppressPreviewOpenUntil = useRef(0);
+
+  const suppressNextPreviewOpen = () => {
+    suppressPreviewOpenUntil.current = Date.now() + 500;
+  };
 
   if (files.length === 0) {
     return (
@@ -38,6 +43,7 @@ export function RecentFilesList({
                 onClick={(event) => {
                   const target = event.target as HTMLElement;
                   if (
+                    Date.now() < suppressPreviewOpenUntil.current ||
                     target.closest(".file-action-dropdown") ||
                     target.closest("[data-radix-portal]") ||
                     document.querySelector('[role="dialog"][data-state="open"]')
@@ -87,7 +93,10 @@ export function RecentFilesList({
                   </span>
                 </span>
                 <span className="file-action-dropdown shrink-0">
-                  <ActionDropdown file={file} />
+                  <ActionDropdown
+                    file={file}
+                    onSuppressPreviewOpen={suppressNextPreviewOpen}
+                  />
                 </span>
               </div>
             </li>

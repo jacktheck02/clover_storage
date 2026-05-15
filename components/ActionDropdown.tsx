@@ -89,12 +89,14 @@ const getFullName = (baseName: string, extension: string) => {
 export function ActionDropdown({
   file,
   onActionComplete,
+  onSuppressPreviewOpen,
 }: {
   file: FileDocument;
   onActionComplete?: (
     action: (typeof actions)[number]["value"],
     nextFileName?: string
   ) => void;
+  onSuppressPreviewOpen?: () => void;
 }) {
   const [state, setState] = useReducer(
     (current: ActionDropdownState, patch: Partial<ActionDropdownState>) => ({
@@ -221,7 +223,11 @@ export function ActionDropdown({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DialogContent className="max-w-md rounded-xl border-[#d0c4bb] bg-white p-0 text-[#1d1b1a] dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#f5efed]">
+      <DialogContent
+        className="max-w-md rounded-xl border-[#d0c4bb] bg-white p-0 text-[#1d1b1a] dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#f5efed]"
+        onInteractOutside={onSuppressPreviewOpen}
+        onPointerDownOutside={onSuppressPreviewOpen}
+      >
         {action && (
           <>
             <DialogHeader className="space-y-3 border-b border-[#e7e1df] px-5 py-4 text-left dark:border-[#4d453e]">

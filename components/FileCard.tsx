@@ -5,7 +5,7 @@ import { FilePreview } from "@/components/FilePreview";
 import { FileThumbnail } from "@/components/FileThumbnail";
 import { isSharedWithUser, SharedFileBadge } from "@/components/SharedFileBadge";
 import { convertFileSize, formatDateTime } from "@/lib/utils";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 export function FileCard({
   file,
@@ -15,11 +15,17 @@ export function FileCard({
   currentUser: UserDocument;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
+  const suppressPreviewOpenUntil = useRef(0);
   const sharedWithCurrentUser = isSharedWithUser(file, currentUser);
+
+  const suppressNextPreviewOpen = () => {
+    suppressPreviewOpenUntil.current = Date.now() + 500;
+  };
 
   const openFilePreview = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
     if (
+      Date.now() < suppressPreviewOpenUntil.current ||
       target.closest(".file-action-dropdown") ||
       target.closest("[data-radix-portal]") ||
       target.closest('[role="dialog"]') ||
@@ -70,7 +76,10 @@ export function FileCard({
             sizes="56px"
           />
           <div className="file-action-dropdown">
-            <ActionDropdown file={file} />
+            <ActionDropdown
+              file={file}
+              onSuppressPreviewOpen={suppressNextPreviewOpen}
+            />
           </div>
         </div>
 
