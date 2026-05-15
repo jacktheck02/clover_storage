@@ -98,10 +98,12 @@ async function sendOtpEmail(env: Env, email: string, otp: string) {
 
 async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   const normalizedEmail = normalizeEmail(email);
-  const verified = await verifyTurnstileToken(env, turnstileToken);
+  const [verified, user] = await Promise.all([
+    verifyTurnstileToken(env, turnstileToken),
+    getUserByEmail(env, normalizedEmail),
+  ]);
   if (!verified) throw new Response("Failed bot check", { status: 400 });
 
-  const user = await getUserByEmail(env, normalizedEmail);
   if (!user) return null;
 
   const otp = generateOtp();
@@ -112,16 +114,16 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
     assertRateLimit(env, normalizedEmail, "otp-send", 3, 60),
   ]);
 
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?").bind(user.id),
-    env.DB.prepare(
-      `INSERT INTO auth_otps
-        (id, user_id, email, otp_hash, attempts, expires_at, created_at)
-       VALUES (?, ?, ?, ?, 0, ?, ?)`
-    ).bind(crypto.randomUUID(), user.id, normalizedEmail, otpHash, expiresAt, createdAt),
-  ]);
-
-  await sendOtpEmail(env, normalizedEmail, otp);
+  await env.DB
+    .batch([
+      env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?").bind(user.id),
+      env.DB.prepare(
+        `INSERT INTO auth_otps
+          (id, user_id, email, otp_hash, attempts, expires_at, created_at)
+         VALUES (?, ?, ?, ?, 0, ?, ?)`
+      ).bind(crypto.randomUUID(), user.id, normalizedEmail, otpHash, expiresAt, createdAt),
+    ])
+    .then(() => sendOtpEmail(env, normalizedEmail, otp));
   return user.id;
 }
 
@@ -132,10 +134,12 @@ async function sendSignupOtp(
   turnstileToken?: string
 ) {
   const normalizedEmail = normalizeEmail(email);
-  const verified = await verifyTurnstileToken(env, turnstileToken);
+  const [verified, existingUser] = await Promise.all([
+    verifyTurnstileToken(env, turnstileToken),
+    getUserByEmail(env, normalizedEmail),
+  ]);
   if (!verified) throw new Response("Failed bot check", { status: 400 });
 
-  const existingUser = await getUserByEmail(env, normalizedEmail);
   if (existingUser) {
     return sendEmailOtp(env, normalizedEmail, turnstileToken);
   }
@@ -143,24 +147,22 @@ async function sendSignupOtp(
   const otp = generateOtp();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
-  const [id, otpHash] = await Promise.all([
+  const [id] = await Promise.all([
     deriveOpaqueUuid(env, "pending-signup", normalizedEmail),
     assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60),
-  ]).then(async ([pendingSignupId]) => [
-    pendingSignupId,
-    await hashSecret(env, otp, pendingSignupId),
   ]);
+  const otpHash = await hashSecret(env, otp, id);
 
-  await env.DB.batch([
-    env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?").bind(normalizedEmail),
-    env.DB.prepare(
-      `INSERT INTO auth_signup_otps
-        (id, email, full_name, otp_hash, attempts, expires_at, created_at)
-       VALUES (?, ?, ?, ?, 0, ?, ?)`
-    ).bind(id, normalizedEmail, fullName, otpHash, expiresAt, createdAt),
-  ]);
-
-  await sendOtpEmail(env, normalizedEmail, otp);
+  await env.DB
+    .batch([
+      env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?").bind(normalizedEmail),
+      env.DB.prepare(
+        `INSERT INTO auth_signup_otps
+          (id, email, full_name, otp_hash, attempts, expires_at, created_at)
+         VALUES (?, ?, ?, ?, 0, ?, ?)`
+      ).bind(id, normalizedEmail, fullName, otpHash, expiresAt, createdAt),
+    ])
+    .then(() => sendOtpEmail(env, normalizedEmail, otp));
   return id;
 }
 

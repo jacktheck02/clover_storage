@@ -5,7 +5,7 @@ import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { cn } from "@/lib/utils";
 import { MusicNotes } from "@phosphor-icons/react";
 import Image from "next/image";
-import { useEffect, useReducer } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 
 interface FileThumbnailProps {
   file: FileDocument;
@@ -16,6 +16,22 @@ interface FileThumbnailProps {
 }
 
 const videoThumbnailCache = new Map<string, string | null>();
+const videoThumbnailLoads = new Set<string>();
+const videoThumbnailListeners = new Set<() => void>();
+
+const emitVideoThumbnailChange = () => {
+  videoThumbnailListeners.forEach((listener) => listener());
+};
+
+const subscribeToVideoThumbnails = (listener: () => void) => {
+  videoThumbnailListeners.add(listener);
+  return () => videoThumbnailListeners.delete(listener);
+};
+
+const getVideoThumbnailSnapshot = (file: FileDocument) => {
+  if (file.type !== "video") return null;
+  return videoThumbnailCache.get(file.url) ?? null;
+};
 
 export function FileThumbnail({
   file,
@@ -24,31 +40,31 @@ export function FileThumbnail({
   imageClassName,
   sizes = "56px",
 }: FileThumbnailProps) {
-  const [videoThumbnail, updateVideoThumbnail] = useReducer(
-    (_current: string | null, nextThumbnail: string | null) => nextThumbnail,
-    null
+  const videoThumbnail = useSyncExternalStore(
+    subscribeToVideoThumbnails,
+    () => getVideoThumbnailSnapshot(file),
+    () => null
   );
   const { artworkUrl } = useAudioArtwork(file.url, file.type === "audio");
 
   useEffect(() => {
-    if (file.type !== "video") {
+    if (
+      file.type !== "video" ||
+      videoThumbnailCache.has(file.url) ||
+      videoThumbnailLoads.has(file.url)
+    ) {
       return;
-    }
-
-    if (videoThumbnailCache.has(file.url)) {
-      const frame = requestAnimationFrame(() => {
-        updateVideoThumbnail(videoThumbnailCache.get(file.url) ?? null);
-      });
-      return () => cancelAnimationFrame(frame);
     }
 
     let cancelled = false;
     let captured = false;
     const video = document.createElement("video");
+    videoThumbnailLoads.add(file.url);
 
     const setCachedThumbnail = (thumbnail: string | null) => {
       videoThumbnailCache.set(file.url, thumbnail);
-      if (!cancelled) updateVideoThumbnail(thumbnail);
+      videoThumbnailLoads.delete(file.url);
+      if (!cancelled) emitVideoThumbnailChange();
     };
 
     const captureFrame = () => {
@@ -98,6 +114,9 @@ export function FileThumbnail({
 
     return () => {
       cancelled = true;
+      if (!videoThumbnailCache.has(file.url)) {
+        videoThumbnailLoads.delete(file.url);
+      }
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
       video.removeEventListener("seeked", captureFrame);
       video.removeEventListener("loadeddata", captureFrame);
