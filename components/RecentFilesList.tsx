@@ -76,7 +76,7 @@ export function RecentFilesList({
                     <span className="block truncate text-sm font-semibold text-[#1d1b1a] dark:text-[#f5efed]">
                       {file.name}
                     </span>
-                    <span className="mt-1 flex min-w-0 flex-wrap items-center gap-2">
+                    <span className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
                       {sharedWithCurrentUser && (
                         <SharedFileBadge ownerName={file.owner.fullName} compact />
                       )}
