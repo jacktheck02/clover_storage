@@ -15,7 +15,7 @@ import {
 } from "@/lib/security";
 
 const handleError = (error: unknown, message: string) => {
-  after(() => console.log(error, message));
+  after(() => console.error(error, message));
   throw error;
 };
 
@@ -124,13 +124,13 @@ export const deleteFile = async ({
 
 // ============================== TOTAL FILE SPACE USED
 export async function getTotalSpaceUsed() {
-  const auth = await getCurrentAuthenticatedUser();
-  if (!auth) throw new Error("User is not authenticated.");
+  const session = await getCurrentAuthenticatedUser();
+  if (!session) throw new Error("User is not authenticated.");
 
   try {
     const totalSpace = await backendJson("/files/total-space", {
       method: "POST",
-      headers: getActorHeaders(auth.user, auth.session),
+      headers: getActorHeaders(session.user, session.session),
       body: JSON.stringify({}),
     });
 

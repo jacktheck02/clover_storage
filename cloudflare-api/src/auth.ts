@@ -101,17 +101,16 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   const verified = await verifyTurnstileToken(env, turnstileToken);
   if (!verified) throw new Response("Failed bot check", { status: 400 });
 
-  const [user] = await Promise.all([
-    getUserByEmail(env, normalizedEmail),
-    assertRateLimit(env, normalizedEmail, "otp-send", 3, 60),
-  ]);
-
+  const user = await getUserByEmail(env, normalizedEmail);
   if (!user) return null;
 
   const otp = generateOtp();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
-  const otpHash = await hashSecret(env, otp, user.id);
+  const [otpHash] = await Promise.all([
+    hashSecret(env, otp, user.id),
+    assertRateLimit(env, normalizedEmail, "otp-send", 3, 60),
+  ]);
 
   await env.DB.batch([
     env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?").bind(user.id),
@@ -141,14 +140,16 @@ async function sendSignupOtp(
     return sendEmailOtp(env, normalizedEmail, turnstileToken);
   }
 
-  const [id] = await Promise.all([
-    deriveOpaqueUuid(env, "pending-signup", normalizedEmail),
-    assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60),
-  ]);
   const otp = generateOtp();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
-  const otpHash = await hashSecret(env, otp, id);
+  const [id, otpHash] = await Promise.all([
+    deriveOpaqueUuid(env, "pending-signup", normalizedEmail),
+    assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60),
+  ]).then(async ([pendingSignupId]) => [
+    pendingSignupId,
+    await hashSecret(env, otp, pendingSignupId),
+  ]);
 
   await env.DB.batch([
     env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?").bind(normalizedEmail),

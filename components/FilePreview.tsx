@@ -67,7 +67,7 @@ const createPdfObjectUrl = async (url: string) => {
 };
 
 export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
-  const [state, setState] = useReducer(
+  const [state, updatePreviewState] = useReducer(
     (current: FilePreviewState, patch: Partial<FilePreviewState>) => ({
       ...current,
       ...patch,
@@ -96,7 +96,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   const loadZipContents = useCallback(async () => {
     if (!file) return;
-    setState({ loading: true, error: null });
+    updatePreviewState({ loading: true, error: null });
     try {
       const JSZip = (await import("jszip")).default;
       const response = await fetch(file.url);
@@ -118,33 +118,33 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         if (!a.isDirectory && b.isDirectory) return 1;
         return a.name.localeCompare(b.name);
       });
-      setState({ zipContents: entries });
+      updatePreviewState({ zipContents: entries });
     } catch (loadError) {
       console.error(loadError);
-      setState({ error: "Failed to load zip file contents" });
+      updatePreviewState({ error: "Failed to load zip file contents" });
     } finally {
-      setState({ loading: false });
+      updatePreviewState({ loading: false });
     }
   }, [file]);
 
   const loadTextContent = useCallback(async () => {
     if (!file) return;
-    setState({ loading: true, error: null });
+    updatePreviewState({ loading: true, error: null });
     try {
       const response = await fetch(file.url);
       if (!response.ok) throw new Error("Failed to fetch file");
-      setState({ textContent: await response.text() });
+      updatePreviewState({ textContent: await response.text() });
     } catch (loadError) {
       console.error(loadError);
-      setState({ error: "Failed to load file content" });
+      updatePreviewState({ error: "Failed to load file content" });
     } finally {
-      setState({ loading: false });
+      updatePreviewState({ loading: false });
     }
   }, [file]);
 
   useEffect(() => {
     if (!file || !isOpen) {
-      setState(initialFilePreviewState);
+      updatePreviewState(initialFilePreviewState);
       return;
     }
 
@@ -153,12 +153,11 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   }, [extension, file, isOpen, loadTextContent, loadZipContents]);
 
   useEffect(() => {
-    setState({ displayName: file?.name || "" });
+    updatePreviewState({ displayName: file?.name || "" });
   }, [file?.$id, file?.name]);
 
   useEffect(() => {
     if (!file || !isOpen || extension !== "pdf") {
-      setState({ pdfObjectUrl: "" });
       return;
     }
 
@@ -166,7 +165,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     let cancelled = false;
 
     const loadPdfPreview = async () => {
-      setState({ loading: true, error: null });
+      updatePreviewState({ loading: true, error: null });
       try {
         objectUrl = await createPdfObjectUrl(file.url);
         if (cancelled) {
@@ -174,12 +173,12 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
           return;
         }
 
-        setState({ pdfObjectUrl: objectUrl });
+        updatePreviewState({ pdfObjectUrl: objectUrl });
       } catch (loadError) {
         console.error(loadError);
-        if (!cancelled) setState({ error: "Failed to load PDF preview" });
+        if (!cancelled) updatePreviewState({ error: "Failed to load PDF preview" });
       } finally {
-        if (!cancelled) setState({ loading: false });
+        if (!cancelled) updatePreviewState({ loading: false });
       }
     };
 
@@ -188,7 +187,6 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setState({ pdfObjectUrl: "" });
     };
   }, [extension, file, isOpen]);
 
@@ -207,11 +205,11 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
-      setState({ isPlaying: false });
+      updatePreviewState({ isPlaying: false });
       return;
     }
     await audioRef.current.play();
-    setState({ isPlaying: true });
+    updatePreviewState({ isPlaying: true });
   };
 
   const seekAudioBy = (seconds: number) => {
@@ -221,7 +219,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
       duration || audioRef.current.duration || 0
     );
     audioRef.current.currentTime = nextTime;
-    setState({ currentTime: nextTime });
+    updatePreviewState({ currentTime: nextTime });
   };
 
   return (
@@ -240,7 +238,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
               onActionComplete={(completedAction, nextFileName) => {
                 if (completedAction === "delete") onClose();
                 if (completedAction === "rename" && nextFileName) {
-                  setState({ displayName: nextFileName });
+                  updatePreviewState({ displayName: nextFileName });
                 }
               }}
             />
@@ -271,7 +269,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
             formatTime={formatTime}
             toggleAudioPlayback={toggleAudioPlayback}
             seekAudioBy={seekAudioBy}
-            setPreviewState={setState}
+            updatePreviewState={updatePreviewState}
           />
         </div>
       </DialogContent>
@@ -306,7 +304,7 @@ function PreviewBody({
   formatTime,
   toggleAudioPlayback,
   seekAudioBy,
-  setPreviewState,
+  updatePreviewState,
 }: {
   file: FileDocument;
   previewFile: FileDocument;
@@ -325,7 +323,7 @@ function PreviewBody({
   formatTime: (seconds: number) => string;
   toggleAudioPlayback: () => Promise<void>;
   seekAudioBy: (seconds: number) => void;
-  setPreviewState: Dispatch<Partial<FilePreviewState>>;
+  updatePreviewState: Dispatch<Partial<FilePreviewState>>;
 }) {
   if (type === "image") {
     return (
@@ -344,7 +342,7 @@ function PreviewBody({
 
   if (type === "video") {
     return (
-      <div className="flex min-h-[420px] items-center justify-center bg-gray-950 p-4">
+      <div className="flex min-h-[420px] items-center justify-center bg-[#10100f] p-4">
         <video src={file.url} controls className="max-h-[70vh] max-w-full rounded-lg">
           Your browser does not support the video tag.
         </video>
@@ -361,15 +359,15 @@ function PreviewBody({
             src={file.url}
             preload="metadata"
             onLoadedMetadata={(event) =>
-              setPreviewState({ duration: event.currentTarget.duration || 0 })
+              updatePreviewState({ duration: event.currentTarget.duration || 0 })
             }
             onTimeUpdate={(event) =>
-              setPreviewState({ currentTime: event.currentTarget.currentTime })
+              updatePreviewState({ currentTime: event.currentTarget.currentTime })
             }
-            onPause={() => setPreviewState({ isPlaying: false })}
-            onPlay={() => setPreviewState({ isPlaying: true })}
+            onPause={() => updatePreviewState({ isPlaying: false })}
+            onPlay={() => updatePreviewState({ isPlaying: true })}
             onEnded={() => {
-              setPreviewState({ isPlaying: false, currentTime: 0 });
+              updatePreviewState({ isPlaying: false, currentTime: 0 });
             }}
           />
           <div className="mb-4 flex items-center justify-between gap-3">
@@ -402,7 +400,7 @@ function PreviewBody({
               if (!audioRef.current) return;
               const nextTime = Number(event.target.value);
               audioRef.current.currentTime = nextTime;
-              setPreviewState({ currentTime: nextTime });
+              updatePreviewState({ currentTime: nextTime });
             }}
             className="w-full accent-[#056e7d]"
             aria-label="Audio progress"

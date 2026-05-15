@@ -24,7 +24,7 @@ export function FileThumbnail({
   imageClassName,
   sizes = "56px",
 }: FileThumbnailProps) {
-  const [videoThumbnail, setVideoThumbnail] = useReducer(
+  const [videoThumbnail, updateVideoThumbnail] = useReducer(
     (_current: string | null, nextThumbnail: string | null) => nextThumbnail,
     null
   );
@@ -37,7 +37,7 @@ export function FileThumbnail({
 
     if (videoThumbnailCache.has(file.url)) {
       const frame = requestAnimationFrame(() => {
-        setVideoThumbnail(videoThumbnailCache.get(file.url) ?? null);
+        updateVideoThumbnail(videoThumbnailCache.get(file.url) ?? null);
       });
       return () => cancelAnimationFrame(frame);
     }
@@ -48,7 +48,7 @@ export function FileThumbnail({
 
     const setCachedThumbnail = (thumbnail: string | null) => {
       videoThumbnailCache.set(file.url, thumbnail);
-      if (!cancelled) setVideoThumbnail(thumbnail);
+      if (!cancelled) updateVideoThumbnail(thumbnail);
     };
 
     const captureFrame = () => {

@@ -71,8 +71,10 @@ export async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/rename") {
-    const actor = await getActor(request, env);
-    const body = await parseBody(request, renameFileSchema);
+    const [actor, body] = await Promise.all([
+      getActor(request, env),
+      parseBody(request, renameFileSchema),
+    ]);
     await env.DB.prepare(
       `UPDATE files SET name = ?, updated_at = ? WHERE id = ? AND owner_id = ?`
     )
@@ -82,8 +84,10 @@ export async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/share") {
-    const actor = await getActor(request, env);
-    const body = await parseBody(request, shareFileSchema);
+    const [actor, body] = await Promise.all([
+      getActor(request, env),
+      parseBody(request, shareFileSchema),
+    ]);
     const ownedFile = await env.DB.prepare("SELECT id FROM files WHERE id = ? AND owner_id = ?")
       .bind(body.fileId, actor.userId)
       .first<{ id: string }>();
@@ -110,8 +114,10 @@ export async function handleFiles(request: Request, env: Env, path: string) {
   }
 
   if (path === "/files/delete") {
-    const actor = await getActor(request, env);
-    const body = await parseBody(request, fileMutationSchema);
+    const [actor, body] = await Promise.all([
+      getActor(request, env),
+      parseBody(request, fileMutationSchema),
+    ]);
     const file = await env.DB.prepare("SELECT r2_key FROM files WHERE id = ? AND owner_id = ?")
       .bind(body.fileId, actor.userId)
       .first<{ r2_key: string }>();

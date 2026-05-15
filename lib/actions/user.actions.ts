@@ -11,7 +11,7 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const handleError = (error: unknown, message: string) => {
-  after(() => console.log(error, message));
+  after(() => console.error(error, message));
   throw error;
 };
 
@@ -107,7 +107,7 @@ export const getCurrentUser = async () => {
 
     return result.user ? parseStringify(result.user) : null;
   } catch (error) {
-    after(() => console.log(error));
+    after(() => console.error(error));
     return null;
   }
 };
@@ -144,7 +144,7 @@ export const signOutUser = async () => {
     }
     cookieStore.delete(getAuthCookieName());
   } catch (error) {
-    after(() => console.log(error, "Failed to sign out user"));
+    after(() => console.error(error, "Failed to sign out user"));
   }
 
   redirect("/sign-in");
