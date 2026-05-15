@@ -18,14 +18,14 @@ interface FileUploaderProps {
 export function FileUploader({ className }: FileUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const path = usePathname();
-  const router = useRouter();
+  const { refresh } = useRouter();
   const { toast } = useToast();
 
   const onDrop = useCallback(
     async (acceptedFiles: File[]) => {
       setFiles(acceptedFiles);
 
-      const uploadPromises = acceptedFiles.map(async (file) => {
+      const uploadFile = async (file: File) => {
         if (file.size > MAX_FILE_SIZE) {
           setFiles((current) => current.filter((item) => item.name !== file.name));
           toast({
@@ -83,9 +83,9 @@ export function FileUploader({ className }: FileUploaderProps) {
 
         setFiles((current) => current.filter((item) => item.name !== file.name));
         return true;
-      });
+      };
 
-      const results = await Promise.allSettled(uploadPromises);
+      const results = await Promise.allSettled(acceptedFiles.map(uploadFile));
       const failed = results.some((result) => result.status === "rejected");
       const uploaded = results.some(
         (result) => result.status === "fulfilled" && result.value
@@ -102,9 +102,9 @@ export function FileUploader({ className }: FileUploaderProps) {
         });
       }
 
-      if (uploaded) router.refresh();
+      if (uploaded) refresh();
     },
-    [path, router, toast]
+    [path, refresh, toast]
   );
 
   const { getRootProps, getInputProps } = useDropzone({ onDrop });

@@ -3,6 +3,7 @@
 import { parseStringify } from "@/lib/utils";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { after } from "next/server";
 import { backendJson, getAuthCookieName } from "@/lib/backend/client";
 
 const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
@@ -10,7 +11,7 @@ const SESSION_MAX_AGE_SECONDS = 30 * 24 * 60 * 60;
 const normalizeEmail = (email: string) => email.trim().toLowerCase();
 
 const handleError = (error: unknown, message: string) => {
-  console.log(error, message);
+  after(() => console.log(error, message));
   throw error;
 };
 
@@ -106,7 +107,7 @@ export const getCurrentUser = async () => {
 
     return result.user ? parseStringify(result.user) : null;
   } catch (error) {
-    console.log(error);
+    after(() => console.log(error));
     return null;
   }
 };
@@ -143,10 +144,10 @@ export const signOutUser = async () => {
     }
     cookieStore.delete(getAuthCookieName());
   } catch (error) {
-    handleError(error, "Failed to sign out user");
-  } finally {
-    redirect("/sign-in");
+    after(() => console.log(error, "Failed to sign out user"));
   }
+
+  redirect("/sign-in");
 };
 
 export const signInUser = async ({

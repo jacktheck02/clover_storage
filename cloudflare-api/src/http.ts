@@ -26,27 +26,9 @@ export async function readJsonBody(request: Request) {
     throw new Response("Request body too large", { status: 413 });
   }
 
-  if (!request.body) return {};
-
-  const reader = request.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let bytesRead = 0;
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    bytesRead += value.byteLength;
-    if (bytesRead > MAX_JSON_BODY_SIZE) {
-      throw new Response("Request body too large", { status: 413 });
-    }
-    chunks.push(value);
-  }
-
-  const body = new Uint8Array(bytesRead);
-  let offset = 0;
-  for (const chunk of chunks) {
-    body.set(chunk, offset);
-    offset += chunk.byteLength;
+  const body = await request.arrayBuffer();
+  if (body.byteLength > MAX_JSON_BODY_SIZE) {
+    throw new Response("Request body too large", { status: 413 });
   }
 
   if (!body.byteLength) return {};

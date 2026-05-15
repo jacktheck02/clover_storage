@@ -101,8 +101,10 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   const verified = await verifyTurnstileToken(env, turnstileToken);
   if (!verified) throw new Response("Failed bot check", { status: 400 });
 
-  const user = await getUserByEmail(env, normalizedEmail);
-  await assertRateLimit(env, normalizedEmail, "otp-send", 3, 60);
+  const [user] = await Promise.all([
+    getUserByEmail(env, normalizedEmail),
+    assertRateLimit(env, normalizedEmail, "otp-send", 3, 60),
+  ]);
 
   if (!user) return null;
 
@@ -111,16 +113,14 @@ async function sendEmailOtp(env: Env, email: string, turnstileToken?: string) {
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
   const otpHash = await hashSecret(env, otp, user.id);
 
-  await env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?")
-    .bind(user.id)
-    .run();
-  await env.DB.prepare(
-    `INSERT INTO auth_otps
-      (id, user_id, email, otp_hash, attempts, expires_at, created_at)
-     VALUES (?, ?, ?, ?, 0, ?, ?)`
-  )
-    .bind(crypto.randomUUID(), user.id, normalizedEmail, otpHash, expiresAt, createdAt)
-    .run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM auth_otps WHERE user_id = ?").bind(user.id),
+    env.DB.prepare(
+      `INSERT INTO auth_otps
+        (id, user_id, email, otp_hash, attempts, expires_at, created_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?)`
+    ).bind(crypto.randomUUID(), user.id, normalizedEmail, otpHash, expiresAt, createdAt),
+  ]);
 
   await sendOtpEmail(env, normalizedEmail, otp);
   return user.id;
@@ -141,24 +141,23 @@ async function sendSignupOtp(
     return sendEmailOtp(env, normalizedEmail, turnstileToken);
   }
 
-  await assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60);
-
-  const id = await deriveOpaqueUuid(env, "pending-signup", normalizedEmail);
+  const [id] = await Promise.all([
+    deriveOpaqueUuid(env, "pending-signup", normalizedEmail),
+    assertRateLimit(env, normalizedEmail, "signup-otp-send", 3, 60),
+  ]);
   const otp = generateOtp();
   const createdAt = nowIso();
   const expiresAt = new Date(Date.now() + OTP_MAX_AGE_SECONDS * 1000).toISOString();
   const otpHash = await hashSecret(env, otp, id);
 
-  await env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?")
-    .bind(normalizedEmail)
-    .run();
-  await env.DB.prepare(
-    `INSERT INTO auth_signup_otps
-      (id, email, full_name, otp_hash, attempts, expires_at, created_at)
-     VALUES (?, ?, ?, ?, 0, ?, ?)`
-  )
-    .bind(id, normalizedEmail, fullName, otpHash, expiresAt, createdAt)
-    .run();
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM auth_signup_otps WHERE email = ?").bind(normalizedEmail),
+    env.DB.prepare(
+      `INSERT INTO auth_signup_otps
+        (id, email, full_name, otp_hash, attempts, expires_at, created_at)
+       VALUES (?, ?, ?, ?, 0, ?, ?)`
+    ).bind(id, normalizedEmail, fullName, otpHash, expiresAt, createdAt),
+  ]);
 
   await sendOtpEmail(env, normalizedEmail, otp);
   return id;

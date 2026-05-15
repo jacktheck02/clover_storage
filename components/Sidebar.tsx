@@ -15,11 +15,11 @@ interface SidebarProps {
 
 export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
+  const { prefetch } = useRouter();
 
   useEffect(() => {
-    navItems.forEach(({ url }) => router.prefetch(url));
-  }, [router]);
+    navItems.forEach(({ url }) => prefetch(url));
+  }, [prefetch]);
 
   return (
     <aside className="hidden h-full w-[264px] shrink-0 overflow-hidden border-r border-[#d0c4bb] bg-[#f8f2f0] px-4 pb-3 pt-5 text-[#1d1b1a] dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] lg:flex lg:flex-col">

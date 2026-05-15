@@ -24,7 +24,7 @@ import {
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { MouseEvent } from "react";
-import { useState } from "react";
+import { useReducer } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -43,14 +43,41 @@ const authSchema = (type: FormType) =>
         : z.string().optional(),
   });
 
+type AuthFormState = {
+  loading: boolean;
+  errorMessage: string;
+  infoMessage: string;
+  accountId: string | null;
+  turnstileToken: string;
+  isSwitchingMode: boolean;
+};
+
+const initialAuthFormState: AuthFormState = {
+  loading: false,
+  errorMessage: "",
+  infoMessage: "",
+  accountId: null,
+  turnstileToken: "",
+  isSwitchingMode: false,
+};
+
 export function AuthForm({ type }: { type: FormType }) {
-  const [loading, setLoading] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-  const [infoMessage, setInfoMessage] = useState("");
-  const [accountId, setAccountId] = useState<string | null>(null);
-  const [turnstileToken, setTurnstileToken] = useState("");
-  const [isSwitchingMode, setIsSwitchingMode] = useState(false);
-  const router = useRouter();
+  const [state, setState] = useReducer(
+    (current: AuthFormState, patch: Partial<AuthFormState>) => ({
+      ...current,
+      ...patch,
+    }),
+    initialAuthFormState
+  );
+  const {
+    loading,
+    errorMessage,
+    infoMessage,
+    accountId,
+    turnstileToken,
+    isSwitchingMode,
+  } = state;
+  const { push } = useRouter();
   const { toast } = useToast();
   const formSchema = authSchema(type);
   const form = useForm<z.infer<typeof formSchema>>({
@@ -59,12 +86,10 @@ export function AuthForm({ type }: { type: FormType }) {
   });
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    setLoading(true);
-    setErrorMessage("");
-    setInfoMessage("");
+    setState({ loading: true, errorMessage: "", infoMessage: "" });
     try {
       if (isTurnstileConfigured() && !turnstileToken) {
-        setErrorMessage("Please complete the security check.");
+        setState({ errorMessage: "Please complete the security check." });
         return;
       }
 
@@ -78,14 +103,14 @@ export function AuthForm({ type }: { type: FormType }) {
           : await signInUser({ email: values.email, turnstileToken });
 
       if (result.error) {
-        setErrorMessage(result.error);
+        setState({ errorMessage: result.error });
         return;
       }
 
       if (result.accountId) {
-        setAccountId(result.accountId);
+        setState({ accountId: result.accountId });
       } else {
-        setInfoMessage("If an account exists for that email, we sent a code.");
+        setState({ infoMessage: "If an account exists for that email, we sent a code." });
         toast({
           title: "Check your email",
           description: "If an account exists for that email, we sent a code.",
@@ -93,13 +118,14 @@ export function AuthForm({ type }: { type: FormType }) {
       }
     } catch (error) {
       console.error(error);
-      setErrorMessage(
-        type === "sign-in"
-          ? "Failed to sign in. Please try again."
-          : "Failed to create account. Please try again."
-      );
+      setState({
+        errorMessage:
+          type === "sign-in"
+            ? "Failed to sign in. Please try again."
+            : "Failed to create account. Please try again.",
+      });
     } finally {
-      setLoading(false);
+      setState({ loading: false });
     }
   };
 
@@ -111,9 +137,9 @@ export function AuthForm({ type }: { type: FormType }) {
     event.preventDefault();
     if (isSwitchingMode) return;
 
-    setIsSwitchingMode(true);
+    setState({ isSwitchingMode: true });
     window.setTimeout(() => {
-      router.push(nextAuthPath);
+      push(nextAuthPath);
     }, 180);
   };
 
@@ -201,8 +227,8 @@ export function AuthForm({ type }: { type: FormType }) {
           </Button>
 
           <Turnstile
-            onToken={setTurnstileToken}
-            onReset={() => setTurnstileToken("")}
+            onToken={(token) => setState({ turnstileToken: token })}
+            onReset={() => setState({ turnstileToken: "" })}
           />
 
           {errorMessage && (
@@ -233,7 +259,7 @@ export function AuthForm({ type }: { type: FormType }) {
         <OTPModal
           accountId={accountId}
           email={form.getValues("email")}
-          onClose={() => setAccountId(null)}
+          onClose={() => setState({ accountId: null })}
         />
       )}
     </>

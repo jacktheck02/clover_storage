@@ -2,6 +2,7 @@
 
 import { parseStringify } from "@/lib/utils";
 import { revalidatePath } from "next/cache";
+import { after } from "next/server";
 import { getCurrentAuthenticatedUser } from "@/lib/actions/user.actions";
 import { backendJson } from "@/lib/backend/client";
 import {
@@ -14,7 +15,7 @@ import {
 } from "@/lib/security";
 
 const handleError = (error: unknown, message: string) => {
-  console.log(error, message);
+  after(() => console.log(error, message));
   throw error;
 };
 
@@ -123,10 +124,10 @@ export const deleteFile = async ({
 
 // ============================== TOTAL FILE SPACE USED
 export async function getTotalSpaceUsed() {
-  try {
-    const auth = await getCurrentAuthenticatedUser();
-    if (!auth) throw new Error("User is not authenticated.");
+  const auth = await getCurrentAuthenticatedUser();
+  if (!auth) throw new Error("User is not authenticated.");
 
+  try {
     const totalSpace = await backendJson("/files/total-space", {
       method: "POST",
       headers: getActorHeaders(auth.user, auth.session),

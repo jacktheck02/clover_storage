@@ -7,49 +7,79 @@ import { getFiles } from "@/lib/actions/file.actions";
 import { formatDateTime } from "@/lib/utils";
 import { MagnifyingGlass, X } from "@phosphor-icons/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
-import { useDebounce } from "use-debounce";
+import { Suspense, useEffect, useReducer, useRef } from "react";
+import { useDebouncedCallback } from "use-debounce";
 
 export function Search() {
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<FileDocument[]>([]);
-  const [open, setOpen] = useState(false);
-  const [debouncedQuery] = useDebounce(query, 300);
+  return (
+    <Suspense fallback={<SearchFallback />}>
+      <SearchContent />
+    </Suspense>
+  );
+}
+
+type SearchState = {
+  query: string;
+  results: FileDocument[];
+  open: boolean;
+};
+
+const initialSearchState: SearchState = {
+  query: "",
+  results: [],
+  open: false,
+};
+
+function SearchFallback() {
+  return (
+    <div className="relative w-full max-w-[520px]">
+      <div className="flex h-11 items-center gap-3 rounded-full border border-[#d0c4bb] bg-[#f8f2f0] px-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
+        <MagnifyingGlass className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
+        <div className="h-5 flex-1 rounded bg-[#ede7e4] dark:bg-[#32302e]" />
+      </div>
+    </div>
+  );
+}
+
+function SearchContent() {
+  const [state, setState] = useReducer(
+    (current: SearchState, patch: Partial<SearchState>) => ({
+      ...current,
+      ...patch,
+    }),
+    initialSearchState
+  );
+  const { query, results, open } = state;
   const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const { push } = useRouter();
+  const paramsString = useSearchParams().toString();
   const searchRef = useRef<HTMLDivElement | null>(null);
 
-  useEffect(() => {
-    const fetchResults = async () => {
-      if (!debouncedQuery.trim()) {
-        setResults([]);
-        setOpen(false);
-        return;
-      }
+  const searchFiles = useDebouncedCallback(async (nextQuery: string) => {
+    if (!nextQuery.trim()) {
+      setState({ results: [], open: false });
+      return;
+    }
 
-      const files = await getFiles({ types: [], searchText: debouncedQuery });
-      setResults(files.documents);
-      setOpen(true);
-    };
-
-    fetchResults();
-  }, [debouncedQuery]);
+    const files = await getFiles({ types: [], searchText: nextQuery });
+    setState({ results: files.documents, open: true });
+  }, 300);
 
   useEffect(() => {
-    /* eslint-disable react-hooks/set-state-in-effect */
-    if (!searchParams.get("query")) setQuery("");
-    setOpen(false);
-    setResults([]);
-    /* eslint-enable react-hooks/set-state-in-effect */
-  }, [pathname, searchParams]);
+    const queryParam = new URLSearchParams(paramsString).get("query");
+    setState(
+      queryParam
+        ? { open: false, results: [] }
+        : { query: "", open: false, results: [] }
+    );
+  }, [pathname, paramsString]);
 
   useEffect(() => {
     if (!open) return;
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!searchRef.current?.contains(event.target as Node)) {
-        setOpen(false);
+        setState({ open: false });
       }
     };
 
@@ -58,9 +88,8 @@ export function Search() {
   }, [open]);
 
   const clear = () => {
-    setQuery("");
-    setOpen(false);
-    setResults([]);
+    searchFiles.cancel();
+    setState({ query: "", open: false, results: [] });
   };
 
   return (
@@ -69,7 +98,11 @@ export function Search() {
         <MagnifyingGlass className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
         <Input
           value={query}
-          onChange={(event) => setQuery(event.target.value)}
+          onChange={(event) => {
+            const nextQuery = event.target.value;
+            setState({ query: nextQuery });
+            searchFiles(nextQuery);
+          }}
           placeholder="Search files..."
           className="h-auto border-0 bg-transparent p-0 text-sm text-[#1d1b1a] shadow-none placeholder:text-[#7f756d] focus-visible:ring-0 dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
         />
@@ -100,7 +133,7 @@ export function Search() {
                     onClick={() => {
                       const route = getRouteForFile(file);
                       clear();
-                      router.push(`${route}?query=${encodeURIComponent(query)}`);
+                      push(`${route}?query=${encodeURIComponent(query)}`);
                     }}
                     className="flex w-full items-center justify-between gap-3 rounded-lg p-2 text-left transition-colors hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
                   >

@@ -33,7 +33,6 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     target.closest("[data-radix-portal]") ||
                     document.querySelector('[role="dialog"][data-state="open"]')
                   ) {
-                    event.preventDefault();
                     event.stopPropagation();
                     return;
                   }
@@ -67,13 +66,7 @@ export function RecentFilesList({ files }: { files: FileDocument[] }) {
                     </span>
                   </span>
                 </span>
-                <span
-                  className="file-action-dropdown shrink-0"
-                  onClick={(event) => {
-                    event.preventDefault();
-                    event.stopPropagation();
-                  }}
-                >
+                <span className="file-action-dropdown shrink-0">
                   <ActionDropdown file={file} />
                 </span>
               </div>

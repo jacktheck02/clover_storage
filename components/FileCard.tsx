@@ -9,7 +9,7 @@ import { useState } from "react";
 export function FileCard({ file }: { file: FileDocument }) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
-  const handleClick = (event: React.MouseEvent) => {
+  const openFilePreview = (event: React.MouseEvent) => {
     const target = event.target as HTMLElement;
     if (
       target.closest(".file-action-dropdown") ||
@@ -17,7 +17,6 @@ export function FileCard({ file }: { file: FileDocument }) {
       target.closest('[role="dialog"]') ||
       document.querySelector('[role="dialog"][data-state="open"]')
     ) {
-      event.preventDefault();
       event.stopPropagation();
       return;
     }
@@ -45,7 +44,7 @@ export function FileCard({ file }: { file: FileDocument }) {
       <div
         role="button"
         tabIndex={0}
-        onClick={handleClick}
+        onClick={openFilePreview}
         onKeyDown={handleKeyDown}
         className="group flex min-h-[172px] flex-col justify-between rounded-lg bg-[#f8f2f0]/65 p-3 transition-colors hover:bg-[#f3edea] dark:bg-[#1d1b1a]/55 dark:hover:bg-[#1d1b1a]"
       >
@@ -56,7 +55,7 @@ export function FileCard({ file }: { file: FileDocument }) {
             iconClassName="size-7"
             sizes="56px"
           />
-          <div className="file-action-dropdown" onClick={(event) => event.stopPropagation()}>
+          <div className="file-action-dropdown">
             <ActionDropdown file={file} />
           </div>
         </div>

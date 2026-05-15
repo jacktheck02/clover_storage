@@ -7,15 +7,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { usePathname, useRouter } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { sortTypes } from "@/constants";
 
 const Sort = () => {
-  const path = usePathname();
-  const router = useRouter();
+  const { push } = useRouter();
 
   const handleSort = (value: string) => {
-    router.push(`${path}?sort=${value}`);
+    push(`${window.location.pathname}?sort=${value}`);
   };
 
   return (

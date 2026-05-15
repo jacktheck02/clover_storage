@@ -13,9 +13,11 @@ export async function GET(
   const fileId = fileIdParamSchema.safeParse(rawFileId);
   if (!fileId.success) return new Response("Invalid file id", { status: 400 });
 
-  const headers = new Headers(getActorHeaders(auth.user, auth.session));
   const range = request.headers.get("range");
-  if (range) headers.set("range", range);
+  const headers = new Headers({
+    ...getActorHeaders(auth.user, auth.session),
+    ...(range ? { range } : {}),
+  });
 
   const response = await backendRaw(`/files/${fileId.data}/download`, { headers });
 

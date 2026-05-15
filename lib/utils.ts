@@ -30,7 +30,9 @@ export const calculatePercentage = (sizeInBytes: number) => {
   return Number(percentage.toFixed(2));
 };
 
-export const getFileType = (fileName: string) => {
+export const getFileType = (
+  fileName: string
+): { type: FileType; extension: string } => {
   const extension = fileName.split(".").pop()?.toLowerCase();
 
   if (!extension) return { type: "other", extension: "" };

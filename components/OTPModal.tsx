@@ -31,7 +31,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
   const [loading, setLoading] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [resendTurnstileToken, setResendTurnstileToken] = useState("");
-  const router = useRouter();
+  const { push } = useRouter();
 
   const handleSubmit = async (
     event: React.FormEvent<HTMLFormElement> | React.MouseEvent<HTMLButtonElement>
@@ -47,7 +47,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
     setLoading(true);
     try {
       const session = await verifySecret({ accountId, password });
-      if (session) router.push("/");
+      if (session) push("/");
     } catch (error) {
       console.error(error);
       setOtpError("Invalid or expired OTP. Please try again.");

@@ -24,6 +24,7 @@ const Layout = ({ children }: { children: React.ReactNode }) => {
           alt="Sea coastline"
           fill
           priority
+          sizes="(max-width: 1024px) 0vw, 50vw"
           className="object-cover"
         />
         <div className="absolute inset-0 bg-[#6b5c4c]/10 mix-blend-multiply" />

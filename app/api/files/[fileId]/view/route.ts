@@ -13,9 +13,11 @@ export async function GET(
   const auth = await getCurrentAuthenticatedUser();
   if (!auth) return new Response("Unauthorized", { status: 401 });
 
-  const headers = new Headers(getActorHeaders(auth.user, auth.session));
   const range = request.headers.get("range");
-  if (range) headers.set("range", range);
+  const headers = new Headers({
+    ...getActorHeaders(auth.user, auth.session),
+    ...(range ? { range } : {}),
+  });
 
   const response = await backendRaw(`/files/${fileId.data}/view`, { headers });
 

@@ -40,10 +40,9 @@ import {
   Trash,
   X,
 } from "@phosphor-icons/react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import type { FormEvent } from "react";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
+import Link from "next/link";
 
 const actions = [
   { label: "Rename", value: "rename", icon: Pencil },
@@ -52,6 +51,25 @@ const actions = [
   { label: "Download", value: "download", icon: DownloadSimple },
   { label: "Delete", value: "delete", icon: Trash },
 ];
+type FileAction = (typeof actions)[number];
+
+type ActionDropdownState = {
+  dropdownOpen: boolean;
+  dialogOpen: boolean;
+  action: FileAction | null;
+  name: string;
+  emails: string[];
+  loading: boolean;
+};
+
+const getInitialState = (file: FileDocument): ActionDropdownState => ({
+  dropdownOpen: false,
+  dialogOpen: false,
+  action: null,
+  name: getBaseName(file.name, file.extension),
+  emails: [],
+  loading: false,
+});
 
 const getBaseName = (fileName: string, extension: string) => {
   const suffix = extension ? `.${extension}` : "";
@@ -78,24 +96,28 @@ export function ActionDropdown({
     nextFileName?: string
   ) => void;
 }) {
-  const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [action, setAction] = useState<(typeof actions)[number] | null>(null);
-  const [name, setName] = useState(getBaseName(file.name, file.extension));
-  const [emails, setEmails] = useState<string[]>([]);
-  const [loading, setLoading] = useState(false);
-  const path = usePathname();
+  const [state, setState] = useReducer(
+    (current: ActionDropdownState, patch: Partial<ActionDropdownState>) => ({
+      ...current,
+      ...patch,
+    }),
+    file,
+    getInitialState
+  );
+  const { dropdownOpen, dialogOpen, action, name, emails, loading } = state;
 
   useEffect(() => {
-    setName(getBaseName(file.name, file.extension));
+    setState({ name: getBaseName(file.name, file.extension) });
   }, [file.extension, file.name]);
 
   const close = () => {
-    setDialogOpen(false);
-    setDropdownOpen(false);
-    setAction(null);
-    setName(getBaseName(file.name, file.extension));
-    setEmails([]);
+    setState({
+      dialogOpen: false,
+      dropdownOpen: false,
+      action: null,
+      name: getBaseName(file.name, file.extension),
+      emails: [],
+    });
   };
 
   const handleAction = async (event?: FormEvent<HTMLFormElement>) => {
@@ -106,7 +128,8 @@ export function ActionDropdown({
       actionValue === "rename" ? getBaseName(name, file.extension).trim() : "";
     const nextFileName =
       actionValue === "rename" ? getFullName(nextBaseName, file.extension) : undefined;
-    setLoading(true);
+    const path = window.location.pathname;
+    setState({ loading: true });
     try {
       if (actionValue === "rename") {
         await renameFile({
@@ -123,14 +146,17 @@ export function ActionDropdown({
         await deleteFile({ fileId: file.$id, path });
       }
       close();
-      if (nextFileName) setName(getBaseName(nextFileName, file.extension));
+      if (nextFileName) {
+        setState({ name: getBaseName(nextFileName, file.extension) });
+      }
       onActionComplete?.(actionValue, nextFileName);
     } finally {
-      setLoading(false);
+      setState({ loading: false });
     }
   };
 
   const removeUser = async (email: string) => {
+    const path = window.location.pathname;
     const nextEmails = file.users.filter((item) => item !== email);
     await updateFileUsers({ fileId: file.$id, emails: nextEmails, path });
     close();
@@ -140,11 +166,14 @@ export function ActionDropdown({
     <Dialog
       open={dialogOpen}
       onOpenChange={(open) => {
-        if (open) setDialogOpen(true);
+        if (open) setState({ dialogOpen: true });
         else close();
       }}
     >
-      <DropdownMenu open={dropdownOpen} onOpenChange={setDropdownOpen}>
+      <DropdownMenu
+        open={dropdownOpen}
+        onOpenChange={(open) => setState({ dropdownOpen: open })}
+      >
         <DropdownMenuTrigger asChild>
           <button
             type="button"
@@ -167,7 +196,7 @@ export function ActionDropdown({
                   <Link
                     href={constructDownloadUrl(file.$id)}
                     download={file.name}
-                    className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#1d1b1a] focus:bg-[#f8f2f0] dark:text-[#f5efed] dark:focus:bg-[#32302e]"
+                    className="flex cursor-pointer items-center gap-2 rounded-lg p-2 text-sm text-[#1d1b1a] focus:bg-[#f8f2f0] dark:text-[#f5efed] dark:focus:bg-[#32302e]"
                   >
                     <Icon className="size-4" />
                     {item.label}
@@ -179,10 +208,9 @@ export function ActionDropdown({
             return (
               <DropdownMenuItem
                 key={item.value}
-                className="flex cursor-pointer items-center gap-2 rounded-lg px-2 py-2 text-sm text-[#1d1b1a] focus:bg-[#f8f2f0] dark:text-[#f5efed] dark:focus:bg-[#32302e]"
+                className="flex cursor-pointer items-center gap-2 rounded-lg p-2 text-sm text-[#1d1b1a] focus:bg-[#f8f2f0] dark:text-[#f5efed] dark:focus:bg-[#32302e]"
                 onClick={() => {
-                  setAction(item);
-                  setDialogOpen(true);
+                  setState({ action: item, dialogOpen: true });
                 }}
               >
                 <Icon className="size-4" />
@@ -208,10 +236,9 @@ export function ActionDropdown({
                   <div className="space-y-2">
                     <Input
                       value={name}
-                      onChange={(event) => setName(event.target.value)}
+                      onChange={(event) => setState({ name: event.target.value })}
                       className="h-12 rounded-lg border-[#d0c4bb] bg-[#f8f2f0] dark:border-[#7f756d] dark:bg-[#32302e]"
                       aria-label="File name"
-                      autoFocus
                     />
                     {file.extension ? (
                       <p className="text-xs text-[#7f756d] dark:text-[#d0c4bb]">
@@ -228,7 +255,7 @@ export function ActionDropdown({
                 {action.value === "share" && (
                   <ShareInput
                     file={file}
-                    onInputChange={setEmails}
+                    onInputChange={(nextEmails) => setState({ emails: nextEmails })}
                     onRemove={removeUser}
                   />
                 )}
@@ -309,7 +336,7 @@ function ShareInput({
   onRemove,
 }: {
   file: FileDocument;
-  onInputChange: React.Dispatch<React.SetStateAction<string[]>>;
+  onInputChange: (emails: string[]) => void;
   onRemove: (email: string) => void;
 }) {
   return (
@@ -330,8 +357,10 @@ function ShareInput({
           onInputChange(
             event.target.value
               .split(",")
-              .map((email) => email.trim())
-              .filter(Boolean)
+              .flatMap((email) => {
+                const trimmedEmail = email.trim();
+                return trimmedEmail ? [trimmedEmail] : [];
+              })
           )
         }
         className="h-12 rounded-lg border-[#d0c4bb] bg-[#f8f2f0] dark:border-[#7f756d] dark:bg-[#32302e]"

@@ -43,25 +43,27 @@ export async function handleFiles(request: Request, env: Env, path: string) {
     const where = conditions.join(" AND ");
     const baseSql = "FROM files f INNER JOIN user_profiles owner ON owner.id = f.owner_id";
 
-    const rows = await bindAll(
-      env.DB.prepare(`
-        SELECT f.id, f.owner_id, f.r2_key, f.name, f.extension, f.type, f.size,
-          f.mime_type, f.created_at, f.updated_at, owner.full_name AS owner_full_name,
-          owner.email AS owner_email, GROUP_CONCAT(fs.email) AS shared_users
-        ${baseSql}
-        LEFT JOIN file_shares fs ON fs.file_id = f.id
-        WHERE ${where}
-        GROUP BY f.id
-        ORDER BY ${order}
-        ${limitSql}
-      `),
-      values
-    ).all<FileRow>();
     const countValues = body.limit ? values.slice(0, -1) : values;
-    const total = await bindAll(
-      env.DB.prepare(`SELECT COUNT(*) AS total ${baseSql} WHERE ${where}`),
-      countValues
-    ).first<{ total: number }>();
+    const [rows, total] = await Promise.all([
+      bindAll(
+        env.DB.prepare(`
+          SELECT f.id, f.owner_id, f.r2_key, f.name, f.extension, f.type, f.size,
+            f.mime_type, f.created_at, f.updated_at, owner.full_name AS owner_full_name,
+            owner.email AS owner_email, GROUP_CONCAT(fs.email) AS shared_users
+          ${baseSql}
+          LEFT JOIN file_shares fs ON fs.file_id = f.id
+          WHERE ${where}
+          GROUP BY f.id
+          ORDER BY ${order}
+          ${limitSql}
+        `),
+        values
+      ).all<FileRow>(),
+      bindAll(
+        env.DB.prepare(`SELECT COUNT(*) AS total ${baseSql} WHERE ${where}`),
+        countValues
+      ).first<{ total: number }>(),
+    ]);
     return json({
       total: total?.total || 0,
       documents: (rows.results as FileRow[]).map(mapFile),
@@ -87,11 +89,13 @@ export async function handleFiles(request: Request, env: Env, path: string) {
       .first<{ id: string }>();
     if (!ownedFile) throw new Response("File not found", { status: 404 });
     const emails = [
-      ...new Set(
-        body.emails
-          .map((email) => normalizeEmail(email))
-          .filter((email) => email && email !== actor.email)
-      ),
+      ...body.emails.reduce((uniqueEmails, email) => {
+        const normalizedEmail = normalizeEmail(email);
+        if (normalizedEmail && normalizedEmail !== actor.email) {
+          uniqueEmails.add(normalizedEmail);
+        }
+        return uniqueEmails;
+      }, new Set<string>()),
     ];
     const now = nowIso();
     await env.DB.batch([

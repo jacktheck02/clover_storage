@@ -21,7 +21,8 @@ import {
   SpinnerGap,
 } from "@phosphor-icons/react";
 import Image from "next/image";
-import { useCallback, useEffect, useRef, useState } from "react";
+import type { Dispatch, RefObject } from "react";
+import { useCallback, useEffect, useReducer, useRef } from "react";
 
 interface FilePreviewProps {
   file: FileDocument | null;
@@ -35,16 +36,55 @@ interface ZipEntry {
   isDirectory: boolean;
 }
 
+type FilePreviewState = {
+  zipContents: ZipEntry[];
+  textContent: string;
+  pdfObjectUrl: string;
+  displayName: string;
+  loading: boolean;
+  error: string | null;
+  isPlaying: boolean;
+  duration: number;
+  currentTime: number;
+};
+
+const initialFilePreviewState: FilePreviewState = {
+  zipContents: [],
+  textContent: "",
+  pdfObjectUrl: "",
+  displayName: "",
+  loading: false,
+  error: null,
+  isPlaying: false,
+  duration: 0,
+  currentTime: 0,
+};
+
+const createPdfObjectUrl = async (url: string) => {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error("Failed to fetch PDF");
+  return URL.createObjectURL(await response.blob());
+};
+
 export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
-  const [zipContents, setZipContents] = useState<ZipEntry[]>([]);
-  const [textContent, setTextContent] = useState("");
-  const [pdfObjectUrl, setPdfObjectUrl] = useState("");
-  const [displayName, setDisplayName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [duration, setDuration] = useState(0);
-  const [currentTime, setCurrentTime] = useState(0);
+  const [state, setState] = useReducer(
+    (current: FilePreviewState, patch: Partial<FilePreviewState>) => ({
+      ...current,
+      ...patch,
+    }),
+    initialFilePreviewState
+  );
+  const {
+    zipContents,
+    textContent,
+    pdfObjectUrl,
+    displayName,
+    loading,
+    error,
+    isPlaying,
+    duration,
+    currentTime,
+  } = state;
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const safeFileName = displayName || file?.name || "";
@@ -56,8 +96,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 
   const loadZipContents = useCallback(async () => {
     if (!file) return;
-    setLoading(true);
-    setError(null);
+    setState({ loading: true, error: null });
     try {
       const JSZip = (await import("jszip")).default;
       const response = await fetch(file.url);
@@ -79,41 +118,33 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
         if (!a.isDirectory && b.isDirectory) return 1;
         return a.name.localeCompare(b.name);
       });
-      setZipContents(entries);
+      setState({ zipContents: entries });
     } catch (loadError) {
       console.error(loadError);
-      setError("Failed to load zip file contents");
+      setState({ error: "Failed to load zip file contents" });
     } finally {
-      setLoading(false);
+      setState({ loading: false });
     }
   }, [file]);
 
   const loadTextContent = useCallback(async () => {
     if (!file) return;
-    setLoading(true);
-    setError(null);
+    setState({ loading: true, error: null });
     try {
       const response = await fetch(file.url);
       if (!response.ok) throw new Error("Failed to fetch file");
-      setTextContent(await response.text());
+      setState({ textContent: await response.text() });
     } catch (loadError) {
       console.error(loadError);
-      setError("Failed to load file content");
+      setState({ error: "Failed to load file content" });
     } finally {
-      setLoading(false);
+      setState({ loading: false });
     }
   }, [file]);
 
   useEffect(() => {
     if (!file || !isOpen) {
-      setDisplayName("");
-      setZipContents([]);
-      setTextContent("");
-      setPdfObjectUrl("");
-      setError(null);
-      setIsPlaying(false);
-      setDuration(0);
-      setCurrentTime(0);
+      setState(initialFilePreviewState);
       return;
     }
 
@@ -122,12 +153,12 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
   }, [extension, file, isOpen, loadTextContent, loadZipContents]);
 
   useEffect(() => {
-    setDisplayName(file?.name || "");
+    setState({ displayName: file?.name || "" });
   }, [file?.$id, file?.name]);
 
   useEffect(() => {
     if (!file || !isOpen || extension !== "pdf") {
-      setPdfObjectUrl("");
+      setState({ pdfObjectUrl: "" });
       return;
     }
 
@@ -135,24 +166,20 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     let cancelled = false;
 
     const loadPdfPreview = async () => {
-      setLoading(true);
-      setError(null);
+      setState({ loading: true, error: null });
       try {
-        const response = await fetch(file.url);
-        if (!response.ok) throw new Error("Failed to fetch PDF");
-
-        objectUrl = URL.createObjectURL(await response.blob());
+        objectUrl = await createPdfObjectUrl(file.url);
         if (cancelled) {
           URL.revokeObjectURL(objectUrl);
           return;
         }
 
-        setPdfObjectUrl(objectUrl);
+        setState({ pdfObjectUrl: objectUrl });
       } catch (loadError) {
         console.error(loadError);
-        if (!cancelled) setError("Failed to load PDF preview");
+        if (!cancelled) setState({ error: "Failed to load PDF preview" });
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!cancelled) setState({ loading: false });
       }
     };
 
@@ -161,7 +188,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     return () => {
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
-      setPdfObjectUrl("");
+      setState({ pdfObjectUrl: "" });
     };
   }, [extension, file, isOpen]);
 
@@ -180,11 +207,11 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
     if (!audioRef.current) return;
     if (isPlaying) {
       audioRef.current.pause();
-      setIsPlaying(false);
+      setState({ isPlaying: false });
       return;
     }
     await audioRef.current.play();
-    setIsPlaying(true);
+    setState({ isPlaying: true });
   };
 
   const seekAudioBy = (seconds: number) => {
@@ -194,205 +221,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
       duration || audioRef.current.duration || 0
     );
     audioRef.current.currentTime = nextTime;
-    setCurrentTime(nextTime);
-  };
-
-  const renderLoading = (label: string) => (
-    <div className="flex h-[360px] items-center justify-center gap-2 text-sm text-[#7f756d] dark:text-[#d0c4bb]">
-      <SpinnerGap className="size-4 animate-spin" />
-      {label}
-    </div>
-  );
-
-  const renderPreview = () => {
-    if (type === "image") {
-      return (
-        <div className="flex min-h-[420px] items-center justify-center bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
-          <Image
-            src={file.url}
-            alt={previewFile.name}
-            width={1200}
-            height={800}
-            className="max-h-[70vh] max-w-full rounded-lg object-contain"
-            unoptimized
-          />
-        </div>
-      );
-    }
-
-    if (type === "video") {
-      return (
-        <div className="flex min-h-[420px] items-center justify-center bg-black p-4">
-          <video src={file.url} controls className="max-h-[70vh] max-w-full rounded-lg">
-            Your browser does not support the video tag.
-          </video>
-        </div>
-      );
-    }
-
-    if (type === "audio") {
-      return (
-        <div className="flex items-center justify-center bg-[#f8f2f0] p-4 dark:bg-[#32302e] sm:p-5">
-          <div className="w-full rounded-xl border border-[#d0c4bb] bg-white p-4 dark:border-[#7f756d] dark:bg-[#1d1b1a] sm:p-5">
-            <audio
-              ref={audioRef}
-              src={file.url}
-              preload="metadata"
-              onLoadedMetadata={(event) => setDuration(event.currentTarget.duration || 0)}
-              onTimeUpdate={(event) => setCurrentTime(event.currentTarget.currentTime)}
-              onPause={() => setIsPlaying(false)}
-              onPlay={() => setIsPlaying(true)}
-              onEnded={() => {
-                setIsPlaying(false);
-                setCurrentTime(0);
-              }}
-            />
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                {artworkUrl ? (
-                  <Image
-                    src={artworkUrl}
-                    alt={`${previewFile.name} cover art`}
-                    width={48}
-                    height={48}
-                    className="size-12 rounded-lg object-cover"
-                    unoptimized
-                  />
-                ) : (
-                  <FileIcon type="audio" className="size-12 rounded-lg" />
-                )}
-                <p className="truncate text-sm font-semibold">{previewFile.name}</p>
-              </div>
-              <p className="shrink-0 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                {formatTime(currentTime)} / {formatTime(duration)}
-              </p>
-            </div>
-            <input
-              type="range"
-              min={0}
-              max={duration || 0}
-              step={0.1}
-              value={Math.min(currentTime, duration || 0)}
-              onChange={(event) => {
-                if (!audioRef.current) return;
-                const nextTime = Number(event.target.value);
-                audioRef.current.currentTime = nextTime;
-                setCurrentTime(nextTime);
-              }}
-              className="w-full accent-[#056e7d]"
-              aria-label="Audio progress"
-            />
-            <div className="mt-5 flex items-center justify-center gap-3">
-              <button
-                type="button"
-                onClick={() => seekAudioBy(-10)}
-                className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
-                aria-label="Go back 10 seconds"
-              >
-                <ArrowCounterClockwise className="size-7" />
-                <span className="absolute text-[10px] font-bold leading-none">
-                  10
-                </span>
-              </button>
-              <button
-                type="button"
-                onClick={toggleAudioPlayback}
-                className="flex size-11 items-center justify-center rounded-full bg-[#056e7d] text-white"
-                aria-label={isPlaying ? "Pause audio" : "Play audio"}
-              >
-                {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
-              </button>
-              <button
-                type="button"
-                onClick={() => seekAudioBy(10)}
-                className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
-                aria-label="Skip ahead 10 seconds"
-              >
-                <ArrowClockwise className="size-7" />
-                <span className="absolute text-[10px] font-bold leading-none">
-                  10
-                </span>
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (extension === "pdf") {
-      if (error) return <PreviewError message={error} />;
-      if (loading || !pdfObjectUrl) return renderLoading("Loading PDF...");
-
-      return (
-        <div className="h-[70vh] bg-[#f8f2f0] dark:bg-[#32302e]">
-          <iframe
-            src={pdfObjectUrl}
-            className="h-full w-full border-0"
-            title={previewFile.name}
-          />
-        </div>
-      );
-    }
-
-    if (["txt", "md", "csv"].includes(extension)) {
-      if (loading) return renderLoading("Loading content...");
-      if (error) return <PreviewError message={error} />;
-
-      return (
-        <div className="max-h-[70vh] overflow-auto bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
-          <pre className="whitespace-pre-wrap font-mono text-sm text-[#1d1b1a] dark:text-[#f5efed]">
-            {textContent}
-          </pre>
-        </div>
-      );
-    }
-
-    if (extension === "zip") {
-      if (loading) return renderLoading("Loading zip contents...");
-      if (error) return <PreviewError message={error} />;
-
-      return (
-        <div className="max-h-[70vh] overflow-auto bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
-          <div className="mb-4 flex items-center gap-2 text-sm font-semibold">
-            <FileArchive className="size-4" />
-            Zip Contents ({zipContents.length} items)
-          </div>
-          {zipContents.length === 0 ? (
-            <p className="text-sm text-[#7f756d] dark:text-[#d0c4bb]">
-              No contents found
-            </p>
-          ) : (
-            <ul className="space-y-1">
-              {zipContents.map((entry) => (
-                <li
-                  key={entry.name}
-                  className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm dark:bg-[#1d1b1a]"
-                >
-                  <FileText className="size-4 shrink-0 text-[#7f756d] dark:text-[#d0c4bb]" />
-                  <span className="min-w-0 flex-1 truncate font-mono text-xs">
-                    {entry.name}
-                  </span>
-                  {!entry.isDirectory && (
-                    <span className="shrink-0 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
-                      {convertFileSize(entry.size)}
-                    </span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-      );
-    }
-
-    return (
-      <div className="flex h-[360px] flex-col items-center justify-center gap-4 bg-[#f8f2f0] p-6 text-center dark:bg-[#32302e]">
-        <FileIcon type={file.type} className="size-14 rounded-xl" />
-        <p className="text-sm text-[#7f756d] dark:text-[#d0c4bb]">
-          File preview is not available.
-        </p>
-      </div>
-    );
+    setState({ currentTime: nextTime });
   };
 
   return (
@@ -411,7 +240,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
               onActionComplete={(completedAction, nextFileName) => {
                 if (completedAction === "delete") onClose();
                 if (completedAction === "rename" && nextFileName) {
-                  setDisplayName(nextFileName);
+                  setState({ displayName: nextFileName });
                 }
               }}
             />
@@ -419,13 +248,275 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
           <DialogTitle className="truncate text-lg font-medium text-[#1d1b1a] dark:text-[#f5efed]">
             {previewFile.name}
           </DialogTitle>
-          <DialogDescription className="sr-only">
+        <DialogDescription className="sr-only">
             Previewing {previewFile.name}
           </DialogDescription>
         </DialogHeader>
-        <div className="overflow-auto">{renderPreview()}</div>
+        <div className="overflow-auto">
+          <PreviewBody
+            file={file}
+            previewFile={previewFile}
+            type={type}
+            extension={extension}
+            artworkUrl={artworkUrl}
+            audioRef={audioRef}
+            loading={loading}
+            error={error}
+            pdfObjectUrl={pdfObjectUrl}
+            textContent={textContent}
+            zipContents={zipContents}
+            isPlaying={isPlaying}
+            duration={duration}
+            currentTime={currentTime}
+            formatTime={formatTime}
+            toggleAudioPlayback={toggleAudioPlayback}
+            seekAudioBy={seekAudioBy}
+            setPreviewState={setState}
+          />
+        </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function PreviewLoading({ label }: { label: string }) {
+  return (
+    <div className="flex h-[360px] items-center justify-center gap-2 text-sm text-[#7f756d] dark:text-[#d0c4bb]">
+      <SpinnerGap className="size-4 animate-spin" />
+      {label}
+    </div>
+  );
+}
+
+function PreviewBody({
+  file,
+  previewFile,
+  type,
+  extension,
+  artworkUrl,
+  audioRef,
+  loading,
+  error,
+  pdfObjectUrl,
+  textContent,
+  zipContents,
+  isPlaying,
+  duration,
+  currentTime,
+  formatTime,
+  toggleAudioPlayback,
+  seekAudioBy,
+  setPreviewState,
+}: {
+  file: FileDocument;
+  previewFile: FileDocument;
+  type: FileType;
+  extension: string;
+  artworkUrl: string | null;
+  audioRef: RefObject<HTMLAudioElement | null>;
+  loading: boolean;
+  error: string | null;
+  pdfObjectUrl: string;
+  textContent: string;
+  zipContents: ZipEntry[];
+  isPlaying: boolean;
+  duration: number;
+  currentTime: number;
+  formatTime: (seconds: number) => string;
+  toggleAudioPlayback: () => Promise<void>;
+  seekAudioBy: (seconds: number) => void;
+  setPreviewState: Dispatch<Partial<FilePreviewState>>;
+}) {
+  if (type === "image") {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
+        <Image
+          src={file.url}
+          alt={previewFile.name}
+          width={1200}
+          height={800}
+          className="max-h-[70vh] max-w-full rounded-lg object-contain"
+          unoptimized
+        />
+      </div>
+    );
+  }
+
+  if (type === "video") {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center bg-gray-950 p-4">
+        <video src={file.url} controls className="max-h-[70vh] max-w-full rounded-lg">
+          Your browser does not support the video tag.
+        </video>
+      </div>
+    );
+  }
+
+  if (type === "audio") {
+    return (
+      <div className="flex items-center justify-center bg-[#f8f2f0] p-4 dark:bg-[#32302e] sm:p-5">
+        <div className="w-full rounded-xl border border-[#d0c4bb] bg-white p-4 dark:border-[#7f756d] dark:bg-[#1d1b1a] sm:p-5">
+          <audio
+            ref={audioRef}
+            src={file.url}
+            preload="metadata"
+            onLoadedMetadata={(event) =>
+              setPreviewState({ duration: event.currentTarget.duration || 0 })
+            }
+            onTimeUpdate={(event) =>
+              setPreviewState({ currentTime: event.currentTarget.currentTime })
+            }
+            onPause={() => setPreviewState({ isPlaying: false })}
+            onPlay={() => setPreviewState({ isPlaying: true })}
+            onEnded={() => {
+              setPreviewState({ isPlaying: false, currentTime: 0 });
+            }}
+          />
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              {artworkUrl ? (
+                <Image
+                  src={artworkUrl}
+                  alt={`${previewFile.name} cover art`}
+                  width={48}
+                  height={48}
+                  className="size-12 rounded-lg object-cover"
+                  unoptimized
+                />
+              ) : (
+                <FileIcon type="audio" className="size-12 rounded-lg" />
+              )}
+              <p className="truncate text-sm font-semibold">{previewFile.name}</p>
+            </div>
+            <p className="shrink-0 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </p>
+          </div>
+          <input
+            type="range"
+            min={0}
+            max={duration || 0}
+            step={0.1}
+            value={Math.min(currentTime, duration || 0)}
+            onChange={(event) => {
+              if (!audioRef.current) return;
+              const nextTime = Number(event.target.value);
+              audioRef.current.currentTime = nextTime;
+              setPreviewState({ currentTime: nextTime });
+            }}
+            className="w-full accent-[#056e7d]"
+            aria-label="Audio progress"
+          />
+          <div className="mt-5 flex items-center justify-center gap-3">
+            <button
+              type="button"
+              onClick={() => seekAudioBy(-10)}
+              className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
+              aria-label="Go back 10 seconds"
+            >
+              <ArrowCounterClockwise className="size-7" />
+              <span className="absolute text-[10px] font-bold leading-none">
+                10
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={toggleAudioPlayback}
+              className="flex size-11 items-center justify-center rounded-full bg-[#056e7d] text-white"
+              aria-label={isPlaying ? "Pause audio" : "Play audio"}
+            >
+              {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+            </button>
+            <button
+              type="button"
+              onClick={() => seekAudioBy(10)}
+              className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
+              aria-label="Skip ahead 10 seconds"
+            >
+              <ArrowClockwise className="size-7" />
+              <span className="absolute text-[10px] font-bold leading-none">
+                10
+              </span>
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (extension === "pdf") {
+    if (error) return <PreviewError message={error} />;
+    if (loading || !pdfObjectUrl) return <PreviewLoading label="Loading PDF..." />;
+
+    return (
+      <div className="h-[70vh] bg-[#f8f2f0] dark:bg-[#32302e]">
+        <iframe
+          src={pdfObjectUrl}
+          className="h-full w-full border-0"
+          title={previewFile.name}
+        />
+      </div>
+    );
+  }
+
+  if (["txt", "md", "csv"].includes(extension)) {
+    if (loading) return <PreviewLoading label="Loading content..." />;
+    if (error) return <PreviewError message={error} />;
+
+    return (
+      <div className="max-h-[70vh] overflow-auto bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
+        <pre className="whitespace-pre-wrap font-mono text-sm text-[#1d1b1a] dark:text-[#f5efed]">
+          {textContent}
+        </pre>
+      </div>
+    );
+  }
+
+  if (extension === "zip") {
+    if (loading) return <PreviewLoading label="Loading zip contents..." />;
+    if (error) return <PreviewError message={error} />;
+
+    return (
+      <div className="max-h-[70vh] overflow-auto bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
+        <div className="mb-4 flex items-center gap-2 text-sm font-semibold">
+          <FileArchive className="size-4" />
+          Zip Contents ({zipContents.length} items)
+        </div>
+        {zipContents.length === 0 ? (
+          <p className="text-sm text-[#7f756d] dark:text-[#d0c4bb]">
+            No contents found
+          </p>
+        ) : (
+          <ul className="space-y-1">
+            {zipContents.map((entry) => (
+              <li
+                key={entry.name}
+                className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm dark:bg-[#1d1b1a]"
+              >
+                <FileText className="size-4 shrink-0 text-[#7f756d] dark:text-[#d0c4bb]" />
+                <span className="min-w-0 flex-1 truncate font-mono text-xs">
+                  {entry.name}
+                </span>
+                {!entry.isDirectory && (
+                  <span className="shrink-0 text-xs text-[#7f756d] dark:text-[#d0c4bb]">
+                    {convertFileSize(entry.size)}
+                  </span>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-[360px] flex-col items-center justify-center gap-4 bg-[#f8f2f0] p-6 text-center dark:bg-[#32302e]">
+      <FileIcon type={file.type} className="size-14 rounded-xl" />
+      <p className="text-sm text-[#7f756d] dark:text-[#d0c4bb]">
+        File preview is not available.
+      </p>
+    </div>
   );
 }
 

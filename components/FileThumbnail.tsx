@@ -5,7 +5,7 @@ import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { cn } from "@/lib/utils";
 import { MusicNotes } from "@phosphor-icons/react";
 import Image from "next/image";
-import { useEffect, useState } from "react";
+import { useEffect, useReducer } from "react";
 
 interface FileThumbnailProps {
   file: FileDocument;
@@ -24,7 +24,10 @@ export function FileThumbnail({
   imageClassName,
   sizes = "56px",
 }: FileThumbnailProps) {
-  const [videoThumbnail, setVideoThumbnail] = useState<string | null>(null);
+  const [videoThumbnail, setVideoThumbnail] = useReducer(
+    (_current: string | null, nextThumbnail: string | null) => nextThumbnail,
+    null
+  );
   const { artworkUrl } = useAudioArtwork(file.url, file.type === "audio");
 
   useEffect(() => {
