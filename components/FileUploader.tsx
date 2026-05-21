@@ -5,7 +5,7 @@ import { FileIcon } from "@/components/FileIcon";
 import { MAX_FILE_SIZE } from "@/constants";
 import { useToast } from "@/hooks/use-toast";
 import { cn, convertFileSize, getFileType } from "@/lib/utils";
-import { SpinnerGap, UploadSimple, X } from "@phosphor-icons/react";
+import { SpinnerGapIcon, UploadSimpleIcon, XIcon } from "@phosphor-icons/react";
 import { usePathname, useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import { useCallback, useState } from "react";
@@ -119,7 +119,7 @@ export function FileUploader({ className }: FileUploaderProps) {
           className
         )}
       >
-        <UploadSimple className="size-4" />
+        <UploadSimpleIcon className="size-4" />
         Upload
       </Button>
 
@@ -150,7 +150,7 @@ export function FileUploader({ className }: FileUploaderProps) {
                     </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
-                    <SpinnerGap className="size-4 animate-spin text-[#056e7d] motion-reduce:animate-none dark:text-[#5bd7bf]" />
+                    <SpinnerGapIcon className="size-4 animate-spin text-[#056e7d] motion-reduce:animate-none dark:text-[#5bd7bf]" />
                     <button
                       type="button"
                       onClick={(event) => {
@@ -161,7 +161,7 @@ export function FileUploader({ className }: FileUploaderProps) {
                       }}
                       className="rounded-full p-1 text-[#7f756d] hover:bg-[#ede7e4] dark:hover:bg-[#4d453e]"
                     >
-                      <X className="size-4" />
+                      <XIcon className="size-4" />
                       <span className="sr-only">Remove {file.name}</span>
                     </button>
                   </div>

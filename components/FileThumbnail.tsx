@@ -3,7 +3,7 @@
 import { FileIcon } from "@/components/FileIcon";
 import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { cn } from "@/lib/utils";
-import { MusicNotes } from "@phosphor-icons/react";
+import { MusicNotesIcon } from "@phosphor-icons/react";
 import Image from "next/image";
 import { useEffect, useSyncExternalStore } from "react";
 
@@ -175,7 +175,7 @@ export function FileThumbnail({
         )}
       >
         <div className="flex flex-col items-center gap-1">
-          <MusicNotes className={cn("size-5", iconClassName)} />
+          <MusicNotesIcon className={cn("size-5", iconClassName)} />
           <span className="flex h-2 items-end gap-0.5" aria-hidden="true">
             <span className="h-1 w-0.5 rounded-full bg-current opacity-60" />
             <span className="h-2 w-0.5 rounded-full bg-current opacity-80" />

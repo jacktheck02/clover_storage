@@ -3,7 +3,7 @@
 import React from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { Moon, Sun } from "@phosphor-icons/react";
+import { MoonIcon, SunIcon } from "@phosphor-icons/react";
 
 const ThemeToggle = () => {
   const { theme, toggleTheme } = useTheme();
@@ -15,9 +15,9 @@ const ThemeToggle = () => {
       aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
     >
       {theme === "light" ? (
-        <Moon className="size-6" />
+        <MoonIcon className="size-6" />
       ) : (
-        <Sun className="size-6" />
+        <SunIcon className="size-6" />
       )}
     </Button>
   );
