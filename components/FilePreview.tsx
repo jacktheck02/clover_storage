@@ -12,13 +12,13 @@ import { FileIcon } from "@/components/FileIcon";
 import { useAudioArtwork } from "@/hooks/useAudioArtwork";
 import { convertFileSize, getFileType } from "@/lib/utils";
 import {
-  ArrowClockwise,
-  ArrowCounterClockwise,
-  FileArchive,
-  FileText,
-  Pause,
-  Play,
-  SpinnerGap,
+  ArrowClockwiseIcon,
+  ArrowCounterClockwiseIcon,
+  FileArchiveIcon,
+  FileTextIcon,
+  PauseIcon,
+  PlayIcon,
+  SpinnerGapIcon,
 } from "@phosphor-icons/react";
 import Image from "next/image";
 import type { Dispatch, RefObject } from "react";
@@ -280,7 +280,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
 function PreviewLoading({ label }: { label: string }) {
   return (
     <div className="flex h-[360px] items-center justify-center gap-2 text-sm text-[#7f756d] dark:text-[#d0c4bb]">
-      <SpinnerGap className="size-4 animate-spin" />
+      <SpinnerGapIcon className="size-4 animate-spin" />
       {label}
     </div>
   );
@@ -412,7 +412,7 @@ function PreviewBody({
               className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
               aria-label="Go back 10 seconds"
             >
-              <ArrowCounterClockwise className="size-7" />
+              <ArrowCounterClockwiseIcon className="size-7" />
               <span className="absolute text-[10px] font-bold leading-none">
                 10
               </span>
@@ -423,7 +423,7 @@ function PreviewBody({
               className="flex size-11 items-center justify-center rounded-full bg-[#056e7d] text-white"
               aria-label={isPlaying ? "Pause audio" : "Play audio"}
             >
-              {isPlaying ? <Pause className="size-5" /> : <Play className="size-5" />}
+              {isPlaying ? <PauseIcon className="size-5" /> : <PlayIcon className="size-5" />}
             </button>
             <button
               type="button"
@@ -431,7 +431,7 @@ function PreviewBody({
               className="relative flex size-10 items-center justify-center rounded-full border border-[#d0c4bb] text-[#4d453e] transition-colors hover:bg-[#f8f2f0] dark:border-[#7f756d] dark:text-[#d0c4bb] dark:hover:bg-[#32302e]"
               aria-label="Skip ahead 10 seconds"
             >
-              <ArrowClockwise className="size-7" />
+              <ArrowClockwiseIcon className="size-7" />
               <span className="absolute text-[10px] font-bold leading-none">
                 10
               </span>
@@ -477,7 +477,7 @@ function PreviewBody({
     return (
       <div className="max-h-[70vh] overflow-auto bg-[#f8f2f0] p-4 dark:bg-[#32302e]">
         <div className="mb-4 flex items-center gap-2 text-sm font-semibold">
-          <FileArchive className="size-4" />
+          <FileArchiveIcon className="size-4" />
           Zip Contents ({zipContents.length} items)
         </div>
         {zipContents.length === 0 ? (
@@ -491,7 +491,7 @@ function PreviewBody({
                 key={entry.name}
                 className="flex items-center gap-3 rounded-lg bg-white px-3 py-2 text-sm dark:bg-[#1d1b1a]"
               >
-                <FileText className="size-4 shrink-0 text-[#7f756d] dark:text-[#d0c4bb]" />
+                <FileTextIcon className="size-4 shrink-0 text-[#7f756d] dark:text-[#d0c4bb]" />
                 <span className="min-w-0 flex-1 truncate font-mono text-xs">
                   {entry.name}
                 </span>

@@ -3,7 +3,7 @@
 import { navItems } from "@/components/storage-utils";
 import { Logo } from "@/components/Logo";
 import { cn } from "@/lib/utils";
-import { SignOut, UserCircle } from "@phosphor-icons/react";
+import { SignOutIcon, UserCircleIcon } from "@phosphor-icons/react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -58,7 +58,7 @@ export function Sidebar({ user }: SidebarProps) {
       <div className="shrink-0 border-t border-[#d0c4bb] pt-4 dark:border-[#7f756d]">
         <div className="flex items-center gap-3">
           <span className="flex size-10 shrink-0 items-center justify-center rounded-full border border-[#d0c4bb] bg-[#fffaf7] text-[#6b5c4c] dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#d7c3b0]">
-            <UserCircle className="size-6" weight="duotone" />
+            <UserCircleIcon className="size-6" weight="duotone" />
           </span>
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold capitalize text-[#1d1b1a] dark:text-[#f5efed]">
@@ -74,7 +74,7 @@ export function Sidebar({ user }: SidebarProps) {
           onClick={() => signOutUser()}
           className="mt-4 flex h-10 w-full items-center justify-start gap-2 rounded-lg px-1 text-sm font-medium text-[#6b5c4c] transition-colors hover:bg-[#f3edea] dark:text-[#d7c3b0] dark:hover:bg-[#4d453e]"
         >
-          <SignOut className="size-4" />
+          <SignOutIcon className="size-4" />
           Sign out
         </button>
       </div>

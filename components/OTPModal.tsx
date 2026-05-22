@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/input-otp";
 import { isTurnstileConfigured, Turnstile } from "@/components/Turnstile";
 import { sendEmailOTP, verifySecret } from "@/lib/actions/user.actions";
-import { SpinnerGap, X } from "@phosphor-icons/react";
+import { SpinnerGapIcon, XIcon } from "@phosphor-icons/react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -64,7 +64,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
           onClick={onClose}
           className="absolute right-4 top-4 rounded-full p-1 text-[#7f756d] hover:bg-[#f8f2f0] dark:hover:bg-[#32302e]"
         >
-          <X className="size-4" />
+          <XIcon className="size-4" />
           <span className="sr-only">Close OTP dialog</span>
         </button>
         <AlertDialogHeader>
@@ -113,7 +113,7 @@ export function OTPModal({ accountId, email, onClose }: OTPModalProps) {
               disabled={loading}
             >
               Submit
-              {loading && <SpinnerGap className="ml-2 size-4 animate-spin" />}
+              {loading && <SpinnerGapIcon className="ml-2 size-4 animate-spin" />}
             </Button>
             <div className="text-center text-sm text-[#4d453e] dark:text-[#d0c4bb]">
               Didn&apos;t receive the OTP?

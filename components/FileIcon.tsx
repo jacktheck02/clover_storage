@@ -1,7 +1,7 @@
 "use client";
 
 import { cn, getFileType } from "@/lib/utils";
-import { FileText } from "@phosphor-icons/react";
+import { FileTextIcon } from "@phosphor-icons/react";
 import { fileTypeMeta } from "@/components/storage-utils";
 
 interface FileIconProps {
@@ -19,7 +19,7 @@ export function FileIcon({
 }: FileIconProps) {
   const inferredType = (type || getFileType(name || "").type) as FileType;
   const meta = fileTypeMeta[inferredType] || fileTypeMeta.other;
-  const Icon = meta.icon || FileText;
+  const Icon = meta.icon || FileTextIcon;
 
   return (
     <div

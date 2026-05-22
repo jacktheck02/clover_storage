@@ -16,10 +16,10 @@ import { useToast } from "@/hooks/use-toast";
 import { createAccount, signInUser } from "@/lib/actions/user.actions";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  ArrowRight,
-  EnvelopeSimple,
-  SpinnerGap,
-  User,
+  ArrowRightIcon,
+  EnvelopeSimpleIcon,
+  SpinnerGapIcon,
+  UserIcon,
 } from "@phosphor-icons/react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -175,7 +175,7 @@ export function AuthForm({ type }: { type: FormType }) {
                   </FormLabel>
                   <FormControl>
                     <div className="relative">
-                      <User className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
+                      <UserIcon className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
                       <Input
                         placeholder="Enter your full name"
                         className="h-[52px] rounded-lg border-[#d0c4bb] bg-white py-3.5 pl-12 text-base text-[#1d1b1a] placeholder:text-[#7f756d] focus-visible:border-[#056e7d] focus-visible:ring-[#056e7d]/20 dark:border-[#7f756d] dark:bg-[#32302e] dark:text-[#f5efed] dark:placeholder:text-[#d0c4bb]"
@@ -199,7 +199,7 @@ export function AuthForm({ type }: { type: FormType }) {
                 </FormLabel>
                 <FormControl>
                   <div className="relative">
-                    <EnvelopeSimple className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
+                    <EnvelopeSimpleIcon className="absolute left-4 top-1/2 size-5 -translate-y-1/2 text-[#7f756d] dark:text-[#d0c4bb]" />
                     <Input
                       placeholder="you@example.com"
                       type="email"
@@ -220,9 +220,9 @@ export function AuthForm({ type }: { type: FormType }) {
           >
             {type === "sign-in" ? "Send OTP" : "Create account"}
             {loading ? (
-              <SpinnerGap className="ml-2 size-4 animate-spin" />
+              <SpinnerGapIcon className="ml-2 size-4 animate-spin" />
             ) : (
-              <ArrowRight className="ml-2 size-4" />
+              <ArrowRightIcon className="ml-2 size-4" />
             )}
           </Button>
 

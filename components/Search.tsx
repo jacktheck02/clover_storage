@@ -6,7 +6,7 @@ import { isSharedWithUser, SharedFileBadge } from "@/components/SharedFileBadge"
 import { getRouteForFile } from "@/components/storage-utils";
 import { getFiles } from "@/lib/actions/file.actions";
 import { formatDateTime } from "@/lib/utils";
-import { MagnifyingGlass, X } from "@phosphor-icons/react";
+import { MagnifyingGlassIcon, XIcon } from "@phosphor-icons/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useReducer, useRef } from "react";
 import { useDebouncedCallback } from "use-debounce";
@@ -35,7 +35,7 @@ function SearchFallback() {
   return (
     <div className="relative w-full max-w-[520px]">
       <div className="flex h-11 items-center gap-3 rounded-full border border-[#d0c4bb] bg-[#f8f2f0] px-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
-        <MagnifyingGlass className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
+        <MagnifyingGlassIcon className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
         <div className="h-5 flex-1 rounded bg-[#ede7e4] dark:bg-[#32302e]" />
       </div>
     </div>
@@ -96,7 +96,7 @@ function SearchContent({ currentUser }: { currentUser: UserDocument }) {
   return (
     <div ref={searchRef} className="relative w-full max-w-[520px]">
       <div className="flex h-11 items-center gap-3 rounded-full border border-[#d0c4bb] bg-[#f8f2f0] px-4 shadow-[0_1px_3px_rgba(0,0,0,0.04)] dark:border-[#7f756d] dark:bg-[#1d1b1a]">
-        <MagnifyingGlass className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
+        <MagnifyingGlassIcon className="size-4 shrink-0 text-[#4d453e] dark:text-[#d0c4bb]" />
         <Input
           value={query}
           onChange={(event) => {
@@ -113,7 +113,7 @@ function SearchContent({ currentUser }: { currentUser: UserDocument }) {
             onClick={clear}
             className="rounded-full p-1 text-[#7f756d] hover:bg-[#ede7e4] dark:hover:bg-[#4d453e]"
           >
-            <X className="size-4" />
+            <XIcon className="size-4" />
             <span className="sr-only">Clear search</span>
           </button>
         )}

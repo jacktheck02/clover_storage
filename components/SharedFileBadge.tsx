@@ -1,6 +1,6 @@
 "use client";
 
-import { ShareNetwork } from "@phosphor-icons/react";
+import { ShareNetworkIcon } from "@phosphor-icons/react";
 
 export function isSharedWithUser(file: FileDocument, user: Pick<UserDocument, "$id">) {
   return file.owner.$id !== user.$id;
@@ -20,7 +20,7 @@ export function SharedFileBadge({
         compact ? "h-4 px-1.5 text-[10px]" : "px-2 py-1 text-[11px]",
       ].join(" ")}
     >
-      <ShareNetwork className={compact ? "size-2.5 shrink-0" : "size-3 shrink-0"} />
+      <ShareNetworkIcon className={compact ? "size-2.5 shrink-0" : "size-3 shrink-0"} />
       <span className="truncate">
         {compact ? "Shared" : `Shared by ${ownerName}`}
       </span>

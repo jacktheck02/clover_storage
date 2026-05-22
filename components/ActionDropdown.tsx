@@ -31,25 +31,25 @@ import {
   formatDateTime,
 } from "@/lib/utils";
 import {
-  DotsThree,
-  DownloadSimple,
-  Info,
-  Pencil,
-  ShareNetwork,
-  SpinnerGap,
-  Trash,
-  X,
+  DotsThreeIcon,
+  DownloadSimpleIcon,
+  InfoIcon,
+  PencilIcon,
+  ShareNetworkIcon,
+  SpinnerGapIcon,
+  TrashIcon,
+  XIcon,
 } from "@phosphor-icons/react";
 import type { FormEvent } from "react";
 import { useEffect, useReducer } from "react";
 import Link from "next/link";
 
 const actions = [
-  { label: "Rename", value: "rename", icon: Pencil },
-  { label: "Details", value: "details", icon: Info },
-  { label: "Share", value: "share", icon: ShareNetwork },
-  { label: "Download", value: "download", icon: DownloadSimple },
-  { label: "Delete", value: "delete", icon: Trash },
+  { label: "Rename", value: "rename", icon: PencilIcon },
+  { label: "Details", value: "details", icon: InfoIcon },
+  { label: "Share", value: "share", icon: ShareNetworkIcon },
+  { label: "Download", value: "download", icon: DownloadSimpleIcon },
+  { label: "Delete", value: "delete", icon: TrashIcon },
 ];
 type FileAction = (typeof actions)[number];
 
@@ -181,7 +181,7 @@ export function ActionDropdown({
             type="button"
             className="flex size-9 items-center justify-center rounded-lg text-[#7f756d] transition-colors hover:bg-[#f3edea] hover:text-[#1d1b1a] dark:text-[#d0c4bb] dark:hover:bg-[#4d453e] dark:hover:text-[#f5efed]"
           >
-            <DotsThree className="size-5" />
+            <DotsThreeIcon className="size-5" />
             <span className="sr-only">Open actions for {file.name}</span>
           </button>
         </DropdownMenuTrigger>
@@ -298,7 +298,7 @@ export function ActionDropdown({
                     className="rounded-lg bg-[#056e7d] text-white hover:bg-[#056e7d]/90"
                   >
                     <span className="capitalize">{action.value}</span>
-                    {loading && <SpinnerGap className="ml-2 size-4 animate-spin" />}
+                    {loading && <SpinnerGapIcon className="ml-2 size-4 animate-spin" />}
                   </Button>
                 </DialogFooter>
               )}
@@ -384,7 +384,7 @@ function ShareInput({
                 onClick={() => onRemove(email)}
                 className="rounded-full p-1 text-[#7f756d] hover:bg-[#ede7e4] dark:hover:bg-[#4d453e]"
               >
-                <X className="size-4" />
+                <XIcon className="size-4" />
                 <span className="sr-only">Remove {email}</span>
               </button>
             </li>

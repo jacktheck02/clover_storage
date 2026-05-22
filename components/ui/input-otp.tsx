@@ -3,7 +3,7 @@
 import * as React from "react"
 import { use } from "react"
 import { OTPInput, OTPInputContext } from "input-otp"
-import { Minus } from "@phosphor-icons/react"
+import { MinusIcon } from "@phosphor-icons/react"
 
 import { cn } from "@/lib/utils"
 
@@ -74,7 +74,7 @@ function InputOTPSeparator({
 }: React.ComponentPropsWithRef<"div">) {
   return (
   <div ref={ref} role="separator" {...props}>
-    <Minus />
+    <MinusIcon />
   </div>
   )
 }
