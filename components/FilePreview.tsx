@@ -235,7 +235,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
           <div className="absolute right-12 top-1.5">
             <ActionDropdown
               file={previewFile}
-              onActionComplete={(completedAction, nextFileName) => {
+              onCompleteAction={(completedAction, nextFileName) => {
                 if (completedAction === "delete") onClose();
                 if (completedAction === "rename" && nextFileName) {
                   updatePreviewState({ displayName: nextFileName });
