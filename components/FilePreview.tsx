@@ -231,8 +231,8 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
             : "w-[min(960px,calc(100vw-32px))]"
         }`}
       >
-        <DialogHeader className="border-b border-[#e7e1df] px-5 py-4 pr-24 text-left dark:border-[#4d453e]">
-          <div className="absolute right-12 top-3.5">
+        <DialogHeader className="border-b border-[#e7e1df] px-5 py-4 text-left dark:border-[#4d453e]">
+          <div className="absolute right-12 top-1.5">
             <ActionDropdown
               file={previewFile}
               onActionComplete={(completedAction, nextFileName) => {
@@ -250,7 +250,7 @@ export function FilePreview({ file, isOpen, onClose }: FilePreviewProps) {
             Previewing {previewFile.name}
           </DialogDescription>
         </DialogHeader>
-        <div className="overflow-auto">
+        <div className="overflow-auto -mt-4">
           <PreviewBody
             file={file}
             previewFile={previewFile}
