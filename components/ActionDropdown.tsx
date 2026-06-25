@@ -88,15 +88,15 @@ const getFullName = (baseName: string, extension: string) => {
 
 export function ActionDropdown({
   file,
-  onActionComplete,
-  onSuppressPreviewOpen,
+  onCompleteAction,
+  onSuppressPreviewOpenAction,
 }: {
   file: FileDocument;
-  onActionComplete?: (
+  onCompleteAction?: (
     action: (typeof actions)[number]["value"],
     nextFileName?: string
   ) => void;
-  onSuppressPreviewOpen?: () => void;
+  onSuppressPreviewOpenAction?: () => void;
 }) {
   const [state, setState] = useReducer(
     (current: ActionDropdownState, patch: Partial<ActionDropdownState>) => ({
@@ -151,7 +151,7 @@ export function ActionDropdown({
       if (nextFileName) {
         setState({ name: getBaseName(nextFileName, file.extension) });
       }
-      onActionComplete?.(actionValue, nextFileName);
+      onCompleteAction?.(actionValue, nextFileName);
     } finally {
       setState({ loading: false });
     }
@@ -225,8 +225,8 @@ export function ActionDropdown({
 
       <DialogContent
         className="max-w-md rounded-xl border-[#d0c4bb] bg-white p-0 text-[#1d1b1a] dark:border-[#7f756d] dark:bg-[#1d1b1a] dark:text-[#f5efed]"
-        onInteractOutside={onSuppressPreviewOpen}
-        onPointerDownOutside={onSuppressPreviewOpen}
+        onInteractOutside={onSuppressPreviewOpenAction}
+        onPointerDownOutside={onSuppressPreviewOpenAction}
       >
         {action && (
           <>

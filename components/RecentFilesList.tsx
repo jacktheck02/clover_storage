@@ -95,7 +95,7 @@ export function RecentFilesList({
                 <span className="file-action-dropdown shrink-0">
                   <ActionDropdown
                     file={file}
-                    onSuppressPreviewOpen={suppressNextPreviewOpen}
+                    onSuppressPreviewOpenAction={suppressNextPreviewOpen}
                   />
                 </span>
               </div>
