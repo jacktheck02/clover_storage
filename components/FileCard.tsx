@@ -78,7 +78,7 @@ export function FileCard({
           <div className="file-action-dropdown">
             <ActionDropdown
               file={file}
-              onSuppressPreviewOpen={suppressNextPreviewOpen}
+              onSuppressPreviewOpenAction={suppressNextPreviewOpen}
             />
           </div>
         </div>
